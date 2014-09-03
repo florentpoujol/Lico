@@ -38,3 +38,6 @@ Daneel.UserConfig = {
     }
 }
 
+table.insert( Daneel.functionsDebugInfo["Vector2.New"][1][2], "Vector3" )
+
+

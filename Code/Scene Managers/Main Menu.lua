@@ -40,7 +40,8 @@ function Behavior:Awake()
                 windowGO:Display(false, true)
                 
                 windowGO.buttonGO.isSelected = false
-                windowGO.buttonGO:OnMouseExit()
+                --windowGO.buttonGO:OnMouseExit()
+                windowGO.buttonGO.backgroundGO:Display(false)
             end
         end
     end
@@ -49,7 +50,8 @@ function Behavior:Awake()
         windowGO.OnDisplay = function( go )
             if go.isDisplayed then
                 go.buttonGO.isSelected = true
-                windowGO.buttonGO:OnMouseEnter()
+                --windowGO.buttonGO:OnMouseEnter()
+                windowGO.buttonGO.backgroundGO:Display()
                 --print(go, windowGO.buttonGO.backgroundGO.isDisplayed)
                 
                 hideAllOtherWindows( go )
@@ -75,5 +77,5 @@ end
 function Behavior:Start()
     local levelsButton = GameObject.Get("Icons.Levels")
      levelsButton:OnClick() -- Select levels window
-     levelsButton:OnMouseExit()
+     --levelsButton:OnMouseExit()
 end

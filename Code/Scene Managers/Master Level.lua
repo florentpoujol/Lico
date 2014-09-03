@@ -6,7 +6,7 @@ function Behavior:Awake()
     mask.modelRenderer.opacity = 0.6
     
     
-    local nodesParent = GameObject.Get("Dots Parent")
+    local nodesParent = GameObject.Get("Nodes Parent")
     -- spawn level content
     local level = Game.levelToLoad or Levels[1]
     local nodes = GameObject.New( level.scenePath )
@@ -28,6 +28,7 @@ function Behavior:Awake()
     ----------
     -- end level
     
+    Game.levelEnded = false
     Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Dot/CheckVictory]
     self.levelStartTime = os.clock()
     Game.deletedLinkCount = 0 -- updated in [Connection/OnClick], used in EndLevel() below
@@ -55,6 +56,7 @@ function Behavior:UpdateLevelCamera()
     end
 end
 
+
 function Behavior:Update()
     if CS.Input.WasButtonJustReleased( "Escape" ) then
         local sd = GetSelectedNodes()
@@ -67,7 +69,16 @@ end
 
 -- called when EndLevel event is Fired from [Dot/CheckVictory]
 function Behavior:EndLevel()
-    --self.endLevelGO.transform.localPosition = Vector3(0)
+    Game.levelEnded = true
+    
+    -- prevent nodes to be selected
+    local nodes = GameObject.GetWithTag("node")
+    for i, node in pairs( nodes ) do
+        node.s.colorGO:RemoveTag("node_model")
+        node.s:Select(false)
+    end
+    
+    --
     Tween.Tweener(self.endLevelGO.transform, "localPosition", Vector3(0), 1.5, {
         easeType = "outElastic",
     } )

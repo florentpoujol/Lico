@@ -1,6 +1,6 @@
 --[[PublicProperties
-color string "Default"
-connectionCount number 0
+color string ""
+maxLinkCount number 0
 /PublicProperties]]
 
 local soundLinkSuccess = CS.FindAsset("Link Success", "Sound")
@@ -24,20 +24,17 @@ function Behavior:Awake()
         } )
     end
     
-    ----------
-    -- links
-    
-    self.linkCount = 0
-    self:SetLinksCount()
+    --    
+    self:InitLinksCounter()
 
     --
     self.isSelected = false
     self:Select(false)
     
-    if (self.color == "" or self.color == "Default") and self.gameObject.modelRenderer then
+    if self.color == "" and self.gameObject.modelRenderer ~= nil then
         self.color = self.gameObject.modelRenderer.model.name
     end
-    if self.color ~= "" and self.color ~= "Default" then
+    if self.color ~= "" then
         self:SetColor( self.color )
     end
     
@@ -46,16 +43,12 @@ function Behavior:Awake()
 end
 
 
-function Behavior:Start()
-    
-end
-
-function Behavior:SetLinksCount()
+function Behavior:InitLinksCounter()
     local linkGO = self.gameObject:GetChild("Links")
     
-    if self.linkCount > 0 then
+    if self.maxLinkCount > 0 then
         if linkGO == nil then
-            linkGO = GameObject.New("Entities/Links")
+            linkGO = Scene.Append("Entities/Links")
             linkGO.parent = self.gameObject
             linkGO.transform.localPosition = Vector3(0)
         end
@@ -63,11 +56,11 @@ function Behavior:SetLinksCount()
         
         local children = linkGO.childrenByName
 
-        for i=self.linkCount+1, 5 do
+        for i=self.maxLinkCount+1, 5 do
             children[tostring(i)].modelRenderer.opacity = 0
         end
 
-        if self.linkCount % 2 == 0 then
+        if self.maxLinkCount % 2 == 0 then
             linkGO.transform.localPosition = Vector3(0,-0.085,0)
         end
     
@@ -76,9 +69,12 @@ function Behavior:SetLinksCount()
     end
 end
 
+
 function Behavior:SetColor( color )
     self.gameObject:RemoveTag(self.color)
-    
+    self.gameObject:AddTag(color)
+    self.color = color
+        
     local colorGO = self.gameObject:GetChild("Color")
     
     if colorGO == nil then
@@ -97,12 +93,16 @@ function Behavior:SetColor( color )
 
         colorGO.modelRenderer.model = "Nodes/"..color
     end
+    
     colorGO:AddTag("node_model")
     colorGO.OnClick = function() self:OnClick() end
-    self.colorGO = colorGO
-    self.color = color
+    colorGO.OnMouseOver = function()
+        if not self.isSelected and not Game.levelEnded then
+            self:OnClick()
+        end
+    end
     
-    self.gameObject:AddTag(color)
+    self.colorGO = colorGO
 end
 
 
@@ -110,24 +110,24 @@ function Behavior:OnClick()
     local selectedNode = GameObject.GetWithTag("selected_node")[1]
     if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one
         --print(selectedDot, self.gameObject)
-        --print((self.linkCount <= 0 or (self.linkCount > 0 and #self.nodeGOs < self.linkCount) ))
-        --print( table.containsvalue( AllowedConnectionsByColor[ selectedDot.s.color ], self.color ) )
-        --print(not table.containsvalue( selectedDot.s.nodeGOs, self.gameObject ))
+        --print((self.maxLinkCount <= 0 or (self.maxLinkCount > 0 and #self.nodeGOs < self.maxLinkCount) ))
+        --print( table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.color ], self.color ) )
+        --print(not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ))
         
         if 
-            (self.linkCount <= 0 
-            or (self.linkCount > 0 and #self.nodeGOs < self.linkCount) ) -- prevent the node to be connected if it has no more connoction to make
+            (self.maxLinkCount <= 0 
+            or (self.maxLinkCount > 0 and #self.nodeGOs < self.maxLinkCount) ) -- prevent the node to be connected if it has no more connoction to make
             and
             
-            table.containsvalue( AllowedConnectionsByColor[ selectedDot.s.color ], self.color ) -- colors of the nodes can connect
+            table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.color ], self.color ) -- colors of the nodes can connect
             and
             
-            not table.containsvalue( selectedDot.s.nodeGOs, self.gameObject ) -- if they are not already connected
+            not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ) -- if they are not already connected
         then
             
             -- check there isn't a bar in between
-            if selectedDot.s:CanConnect( self.gameObject ) then
-                selectedDot.s:Connect( self.gameObject )
+            if selectedNode.s:CanLink( self.gameObject ) then
+                selectedNode.s:Link( self.gameObject )
             else
                 if not Game.randomLevelGenerationInProgress then
                     soundNoAction:Play()
@@ -138,7 +138,6 @@ function Behavior:OnClick()
                 soundNoAction:Play()
             end
         end
-        
     end
     
     self:Select()
@@ -154,12 +153,11 @@ function Behavior:Select( select )
     
     if select then
         -- prevent the node to be selected if it has no more link to make
-        if self.linkCount > 0 and #self.nodeGOs >= self.linkCount then
+        if self.maxLinkCount > 0 and #self.nodeGOs >= self.maxLinkCount then
             return
         end
         
-        self.overlayGO:Display()
-        
+        self.overlayGO:Display()     
         self.isSelected = true
         
         local selectedNode = GameObject.GetWithTag("selected_node")[1]
@@ -178,31 +176,86 @@ end
 
 
 -- check there isn't a bar in between
-function Behavior:CanConnect( targetGO )
-    -- check there isn't a bar in between
+function Behavior:CanLink( targetGO )  
+    -- check that the intersection point between the (potential) link line and al other links
     local selfPosition = self.gameObject.transform.position
     local otherPosition = targetGO.transform.position 
-    local ray = Ray:New(otherPosition, (selfPosition - otherPosition):Normalized() )
     
-    local barGOs = GameObject.GetWithTag( "link" )
-    -- remove from barGOs the links of the selected node
+    local x1 = selfPosition.x
+    local y1 = selfPosition.y
+    local point1 = Vector2(x1,y1)
+    
+    local x2 = otherPosition.x
+    local y2 = otherPosition.y
+    local point2 = Vector2(x2,y2)  
+    
+    local linkGOs = GameObject.GetWithTag( "link" )
     for i, go in pairs(self.linkGOs) do
-        table.removevalue( barGOs, go )
+        table.removevalue( linkGOs, go )
     end
     for i, go in pairs(targetGO.s.linkGOs) do
-        table.removevalue( barGOs, go )
+        table.removevalue( linkGOs, go )
+    end
+    for i, linkGO in pairs( linkGOs ) do
+        local x3 = linkGO.s.nodePositions[1].x
+        local y3 = linkGO.s.nodePositions[1].y
+        local point3 = Vector2(x3,y3)
+        
+        local x4 = linkGO.s.nodePositions[2].x
+        local y4 = linkGO.s.nodePositions[2].y
+        local point4 = Vector2(x4,y4)
+        
+        -- formula from: 
+        -- http://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
+        
+        -- first, check if the lines are parralell
+        local a = x1 - x2
+        local b = y1 - y2
+        local c = x3 - x4
+        local d = y3 - y4
+        local denominator = a * d - b * c
+        
+        if denominator ~= 0 then
+            local e = (x1 * y2 - y1 * x2)
+            local f = (x3 * y4 - y3 * x4)
+            
+            -- i for intersection
+            local xi = ( e*c - a*f ) / denominator
+            local yi = ( e*d - b*f ) / denominator
+            local pointi = Vector2(xi,yi)
+            
+            -- now check if the point is inside both segments which means the links actually intersects.
+            -- the point is inside a segment if the distance to the two points of the segment is now greater than the distance between the two points
+            
+            local link1SqrLength = (point1 - point2):GetSqrLength()
+            local point1SqrDistance = (point1 - pointi):GetSqrLength()
+            local point2SqrDistance = (point2 - pointi):GetSqrLength()
+            
+            local link2SqrLength = (point3 - point4):GetSqrLength()
+            local point3SqrDistance = (point3 - pointi):GetSqrLength()
+            local point4SqrDistance = (point4 - pointi):GetSqrLength()
+            
+            if 
+                point1SqrDistance <= link1SqrLength and point2SqrDistance <= link1SqrLength and
+                point3SqrDistance <= link2SqrLength and point4SqrDistance <= link2SqrLength
+            then
+                return false
+            end
+        end
     end
     
-    table.mergein( barGOs, GameObject.GetWithTag( "node_model" ) )
-    if self.colorGO then
-        table.removevalue( barGOs, self.colorGO )
-    end
-    if targetGO.s.colorGO then
-        table.removevalue( barGOs, targetGO.s.colorGO )
-    end
+    -- check there isn't a bar in between
+    local ray = Ray:New(otherPosition, (selfPosition - otherPosition):Normalized() )
 
+    local nodeGOs = GameObject.GetWithTag( "node_model" )
+    if self.colorGO ~= nil then
+        table.removevalue( nodeGOs, self.colorGO )
+    end
+    if targetGO.s.colorGO ~= nil then
+        table.removevalue( nodeGOs, targetGO.s.colorGO )
+    end
     
-    local hit = ray:Cast( barGOs, true )[1]
+    local hit = ray:Cast( nodeGOs, true )[1]
 
     if hit == nil or hit.distance > (selfPosition - otherPosition):GetLength() then
         return true
@@ -211,48 +264,49 @@ function Behavior:CanConnect( targetGO )
 end
 
 
-function Behavior:Connect( targetGO )
-    local barGO = GameObject.New("Entities/Link")
-    barGO.parent = self.gameObject
-    barGO.transform.localPosition = Vector3(0,0,0)
+function Behavior:Link( targetGO )
+    local linkGO = Scene.Append("Entities/Link")
+    linkGO.parent = self.gameObject
+    linkGO.transform.localPosition = Vector3(0,0,0)
     
     local selfPosition = self.gameObject.transform.position
     local otherPosition = targetGO.transform.position 
     local direction = otherPosition - selfPosition
     local linkLength = direction:Length()
     
-    barGO.transform:Move( direction:Normalized() * 0.5 )
+    linkGO.transform:Move( direction:Normalized() * 0.5 )
     
-    barGO.transform:LookAt( otherPosition )
-    local angles = barGO.transform.localEulerAngles
+    linkGO.transform:LookAt( otherPosition )
+    local angles = linkGO.transform.localEulerAngles
     local y = math.round( angles.y )
     
     if y == 90 then
         -- links that goes upward
         angles.z = -180
-        barGO.transform.localEulerAngles = angles
+        linkGO.transform.localEulerAngles = angles
     elseif y == 0 then
         -- totally vertical link
         angles.z = 90 -- totally wild guess
-        barGO.transform.localEulerAngles = angles
+        linkGO.transform.localEulerAngles = angles
     end
     
-    barGO.transform.localScale = Vector3(0.3,0.3, linkLength-1 )
+    linkGO.transform.localScale = Vector3(0.3,0.3, linkLength-1 )
 
-    barGO.s:SetColor( self.color, targetGO.s.color )
+    linkGO.s:SetColor( self.color, targetGO.s.color )
     
     --
        
-    barGO.s.nodeGOs = { self.gameObject, targetGO }
+    linkGO.s.nodeGOs = { self.gameObject, targetGO }
+    linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
     
     table.insert( self.nodeGOs, targetGO )
     table.insert( targetGO.s.nodeGOs, self.gameObject )
     
-    table.insert( self.linkGOs, barGO )
-    table.insert( targetGO.s.linkGOs, barGO )
+    table.insert( self.linkGOs, linkGO )
+    table.insert( targetGO.s.linkGOs, linkGO )
     
     --
-    if self.linkCount > 0 and #self.nodeGOs >= self.linkCount then
+    if self.maxLinkCount > 0 and #self.nodeGOs >= self.maxLinkCount then
         self:Select(false)
     end
     
@@ -264,7 +318,7 @@ function Behavior:Connect( targetGO )
 end
 
 
-function Behavior:CheckAllDotsConnected()
+function Behavior:CheckAllNodesAreLinked()
     local nodes = GameObject.GetWithTag( "node" )
     
     -- quick-search for nodes without links
@@ -310,14 +364,14 @@ function Behavior:CheckVictory()
     
     -- check that all nodes have all their link
     for i, node in pairs(nodes) do
-        if node.s.linkCount > 0 and #node.s.nodeGOs < node.s.linkCount then
+        if node.s.maxLinkCount > 0 and #node.s.nodeGOs < node.s.maxLinkCount then
             return false
         end
     end
 
-    local allDotsConnected = self:CheckAllDotsConnected()
+    local allNodesLinked = self:CheckAllNodesAreLinked()
     
-    if allDotsConnected then
+    if allNodesLinked then
         Daneel.Event.Fire("EndLevel")
     end
 end

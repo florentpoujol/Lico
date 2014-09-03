@@ -6,10 +6,10 @@ function Behavior:Awake()
     
     local UICameraGO = GameObject.Get("UI Camera")
     local UISizeGO = GameObject.Get("UI Size")
-    UISizeGO.sizeValue = 5 -- 1 to 10
+    UISizeGO.sizeValue = 6 -- 1 to 10
     
     local sizeValueGO = UISizeGO:GetChild("Value", true)
-    sizeValueGO.textRenderer.text = 5
+    sizeValueGO.textRenderer.text = 6
     
     local plusGO = UISizeGO:GetChild("+", true)
     plusGO:AddTag("ui")
@@ -24,16 +24,16 @@ function Behavior:Awake()
         UISizeGO.sizeValue = value
         
         -- size = ortho scale
-        -- 1 = 90
-        -- 5 = 50
-        -- 10 = 20
-        -- a = (20-90)/(10-1) = -7.7778
-        -- y = ax + b <=> b = y - ax <=> b = 90 + 7.7778
+        -- 1 = 100
+        -- 5 = 60
+        -- 10 = 10
+        -- a = (10-100)/(10-1) = -10
+        -- y = ax + b <=> b = y - ax <=> b = 110
         
-        local orthoScale = -70/9 * value + 90 + 70/9
+        local orthoScale = -10 * value + 110
         UICameraGO.camera.orthographicScale = orthoScale
         Screen.RecreateOriginGO()
-        
+        print(orthoScale)
         Tween.Timer( 0.1, function()
             Daneel.Event.Fire("OnScreenResized")
         end )

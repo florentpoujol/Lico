@@ -19,7 +19,7 @@ function Screen.Load()
         hud.OnScreenResized = function()
             if hud.savedPosition ~= nil then
                 hud.position = hud.savedPosition
-                --print("OnScreenResized", hud.savedPosition)
+                --print("OnScreenResized", hud.gameObject, hud.savedPosition, hud.position, hud.gameObject.transform.localPosition, hud.gameObject.transform.position)
             end
         end
         Daneel.Event.Listen( "OnScreenResized", hud )

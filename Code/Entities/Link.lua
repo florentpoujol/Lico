@@ -11,7 +11,8 @@ function Behavior:Awake()
     self.startGradient = self.gameObject:GetChild("Start Gradient")
     self.endGradient = self.gameObject:GetChild("End Gradient")
         
-    self.nodeGOs = {} -- filled in [Node/Connect]
+    self.nodeGOs = {} -- filled in [Node/Link]
+    self.nodePositions = {} -- filled in [Node/Link], used in [Node/CanLink]
 end
 
 

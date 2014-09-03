@@ -1,10 +1,6 @@
 function Behavior:Awake()
     self.gameObject.camera:Destroy()
     
-    local title= self.gameObject:GetChild("Title", true)
-    title.textRenderer.font = "Calibri French"
-    title.textRenderer.text = "passé"
-    
     --    
     self.gridGO = self.gameObject:GetChild("Grid Origin", true)
     self.gridLayout = { x = 3, y = 4 }
