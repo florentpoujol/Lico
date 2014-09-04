@@ -1,5 +1,6 @@
 function Behavior:Awake()
     self.gameObject.camera:Destroy()
+    LoadCompletedLevels()
     
     --    
     self.gridGO = self.gameObject:GetChild("Grid Origin", true)
@@ -16,8 +17,15 @@ function Behavior:Awake()
     self.lastFirstLevelIndex = -999
 
     ----------
-
+    Daneel.Event.Listen("CompletedLevelsLoaded", function() 
+        print("loaded")
+        if self.firstLevelIndex ~= nil then
+            self:BuildLevelGrid()
+        end
+    end )
+        
     self:BuildLevelGrid()
+
 end
 
 

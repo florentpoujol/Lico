@@ -2,21 +2,45 @@
 function Behavior:Awake()
     local bg = GameObject.New("Background")
     local mask = bg:GetChild("Mask", true)
-    --mask.modelRenderer.model = "Cubes/White"
-    mask.modelRenderer.opacity = 0.6
+    mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
     
-    
-    local nodesParent = GameObject.Get("Nodes Parent")
+    ----------
     -- spawn level content
-    local level = Game.levelToLoad or Levels[1]
-    local nodes = GameObject.New( level.scenePath )
     
-    nodes.parent = nodesParent
+    local level = Game.levelToLoad or Levels[1]
+    local content = Scene.Append( level.scenePath )
+    
+    --
+    local nodes = content:GetChild("Nodes")
+    nodes.parent = GameObject.Get("Nodes Parent")
     nodes.transform.localPosition = Vector3(0)
     
     --
+    local helpWindowGO = nil -- used below on Icons section
+    
+    local helpGO = content:GetChild("Help")
+    if helpGO ~= nil then
+        local cameraPH = helpGO:GetChild("Camera Placeholder")
+        if cameraPH ~= nil then
+            cameraPH:Destroy()
+        end
+        
+        local iconPH = helpGO:GetChild("Icon Placeholder")
+        if iconPH ~= nil then
+            iconPH:Destroy()
+        end
+        
+        local windowGO = helpGO:GetChild("Window")
+        if windowGO ~= nil then
+            helpWindowGO = windowGO
+            windowGO.parent = GameObject.Get("UI.Help Window")
+            windowGO.transform.localPosition = Vector3(0)
+        end
+    end
+    
+    --
     if level.tutoText ~= nil then
-        self:SetupTuto( level )
+        --self:SetupTuto( level )
     end
     
     self:UpdateLevelCamera()
@@ -24,17 +48,32 @@ function Behavior:Awake()
     
     -- update the orthographic scale of the world camera so that the whole level but not more is visible
     
+    ----------
+    -- Icons
+    
+    local helpGO = GameObject.Get("Icons.Help")
+    helpGO:InitWindow("Tooltip", "mouseover", "ui")
+    
+    if helpWindowGO ~= nil then
+        helpGO:InitWindow(helpWindowGO, "mouseclick")
+    end
+    
+    InitIcons() -- in [Helpers]
+    
     
     ----------
     -- end level
     
     Game.levelEnded = false
-    Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Dot/CheckVictory]
+    Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Node/CheckVictory]
     self.levelStartTime = os.clock()
-    Game.deletedLinkCount = 0 -- updated in [Connection/OnClick], used in EndLevel() below
+    Game.deletedLinkCount = 0 -- updated in [Link/OnClick], used in EndLevel() below
     
     self.endLevelGO = GameObject.Get("End Level")
     self.endLevelGO.transform.localPosition = Vector3(0,-40,0)
+    
+    --
+    UpdateUISize()
 end
 
 
@@ -67,7 +106,7 @@ function Behavior:Update()
 end
 
 
--- called when EndLevel event is Fired from [Dot/CheckVictory]
+-- called when EndLevel event is Fired from [Node/CheckVictory]
 function Behavior:EndLevel()
     Game.levelEnded = true
     
@@ -123,6 +162,7 @@ function Behavior:EndLevel()
     else
         local currentLevel = GetLevel( Game.levelToLoad.name )
         currentLevel.isCompleted = true
+        SaveCompletedLevels()
         
         local nextLevel = nil
         for i, level in ipairs( Levels ) do

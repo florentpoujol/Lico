@@ -7,52 +7,44 @@ local soundLinkSuccess = CS.FindAsset("Link Success", "Sound")
 local soundNoAction = CS.FindAsset("No Action", "Sound")
 
 function Behavior:Awake()
+    -- if the game object only has a modelRenderer, it is a placeholder to be replaced by the real node
+    self.overlayGO = self.gameObject:GetChild("Overlay")
+    if self.overlayGO == nil then
+        local realNode = Scene.Append("Entities/Node", self.gameObject.parent)
+        realNode.transform.localPosition = self.gameObject.transform.localPosition
+        
+        if self.color == "" and self.gameObject.modelRenderer ~= nil then
+            self.color = self.gameObject.modelRenderer.model.name
+        end
+        if self.color ~= "" then
+            realNode.s:SetColor(self.color)
+        end
+    
+        realNode.s.maxLinkCount = self.maxLinkCount
+        realNode.s:InitLinksCounter() -- always call it, even if maxLinkCount is 0 (it will hide the links counter) 
+        
+        self.gameObject:Destroy()
+        return
+    end
+        
+
     self.gameObject.s = self
     self.gameObject:AddTag("node")
     self.childrenByName = self.gameObject.childrenByName
-    
-    --
-    self.overlayGO = self.gameObject:GetChild("Overlay")
-    if self.overlayGO == nil then
-        self.overlayGO = GameObject.New("Overlay", {
-            parent = self.gameObject, -- was origin instead of self.gameObejct
-            transform = {
-                localPosition = Vector3(0),
-                localScale = Vector3(1.2,1.2,0.1)
-            },
-            modelRenderer = { model = "Cubes/White" } 
-        } )
-    end
-    
-    --    
-    self:InitLinksCounter()
 
-    --
-    self.isSelected = false
-    self:Select(false)
+    self:Select(false) -- set self.isSelected
     
-    if self.color == "" and self.gameObject.modelRenderer ~= nil then
-        self.color = self.gameObject.modelRenderer.model.name
-    end
-    if self.color ~= "" then
-        self:SetColor( self.color )
-    end
-    
-    self.nodeGOs = {} -- nodes this node is connected to -- filled in Connect()
+    self.nodeGOs = {} -- nodes this node is connected to -- filled in Link()
     self.linkGOs = {}
 end
 
 
+-- in practice, only called from a node placeholder Awake()
 function Behavior:InitLinksCounter()
     local linkGO = self.gameObject:GetChild("Links")
     
     if self.maxLinkCount > 0 then
-        if linkGO == nil then
-            linkGO = Scene.Append("Entities/Links")
-            linkGO.parent = self.gameObject
-            linkGO.transform.localPosition = Vector3(0)
-        end
-        linkGO.transform.localScale = 1
+        --linkGO.transform.localScale = 1
         
         local children = linkGO.childrenByName
 
@@ -65,11 +57,12 @@ function Behavior:InitLinksCounter()
         end
     
     elseif linkGO ~= nil then
-        linkGO.transform.localScale = 0
+        linkGO:Destroy()
     end
 end
 
 
+-- in practice, only called from a node placeholder Awake()
 function Behavior:SetColor( color )
     self.gameObject:RemoveTag(self.color)
     self.gameObject:AddTag(color)
@@ -372,6 +365,6 @@ function Behavior:CheckVictory()
     local allNodesLinked = self:CheckAllNodesAreLinked()
     
     if allNodesLinked then
-        Daneel.Event.Fire("EndLevel")
+        Daneel.Event.Fire("EndLevel") -- catched by [Master Level/EndLevel]
     end
 end

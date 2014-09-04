@@ -40,26 +40,26 @@ function Behavior:Awake()
                 windowGO:Display(false, true)
                 
                 windowGO.buttonGO.isSelected = false
-                --windowGO.buttonGO:OnMouseExit()
-                windowGO.buttonGO.backgroundGO:Display(false)
+                windowGO.buttonGO:Display(0.5)
             end
         end
     end
     
-    for i, windowGO in pairs( allWindows ) do   
+    for i, windowGO in pairs( allWindows ) do       
         windowGO.OnDisplay = function( go )
             if go.isDisplayed then
                 go.buttonGO.isSelected = true
-                --windowGO.buttonGO:OnMouseEnter()
-                windowGO.buttonGO.backgroundGO:Display()
-                --print(go, windowGO.buttonGO.backgroundGO.isDisplayed)
+                go.buttonGO:Display(1)
                 
                 hideAllOtherWindows( go )
             end
         end
     end
     
-    for i, iconGO in pairs( GameObject.Get("UI.Icons").children ) do
+    --
+    local allIcons = GameObject.Get("UI.Icons").children
+    
+    for i, iconGO in pairs( allIcons ) do
         iconGO.isSelected = false
         
         local oOnClick = iconGO.OnClick -- set by GameObject.InitWindow()
@@ -70,7 +70,14 @@ function Behavior:Awake()
             end
         end
     end
-
+    
+    InitIcons()
+    
+    --
+    Daneel.Event.Listen("OnScreenResized", SaveOptions, true ) -- save the new resolution/ui size, whenever the resolution/ui size are modified 
+    Daneel.Event.Listen("OptionsLoaded", function()
+        CS.Screen.SetSize(Options.screenSize.x, Options.screenSize.y)
+    end )
 end
 
 

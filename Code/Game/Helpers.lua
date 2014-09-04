@@ -1,36 +1,29 @@
 
-Background = {}
-Daneel.modules.Background = Background
-
-function Background.Start()
-
-    local gos = GameObject.GetWithTag("ui")
-    for i, go in pairs (gos ) do
-        local backgroundGO = go:GetChild("Background")
-        if backgroundGO ~= nil then
-            go.backgroundGO = backgroundGO
-            backgroundGO:Display(false)
-            
-            --[[local oOnMouseEnter = go.OnMouseEnter
-            go.OnMouseEnter = function()
-                backgroundGO:Display()
-                if oOnMouseEnter ~= nil then
-                    oOnMouseEnter()
-                end
+-- allow for mouse over effect other than the tooltip
+-- used in [Main Menu/Awake] and [Master Level/Awake]
+function InitIcons()
+    local iconGOs = GameObject.Get("UI.Icons").children
+    
+    for i, iconGO in pairs( iconGOs ) do
+        iconGO:Display(0.5)
+        
+        -- override OnMouseEnter/Exit set by GO.InitWindow()
+        local onMouseEnter = iconGO.OnMouseEnter
+        iconGO.OnMouseEnter = function(go)
+            go:Display(1)
+            onMouseEnter(go)
+        end
+        
+        local onMouseExit = iconGO.OnMouseExit
+        iconGO.OnMouseExit = function(go)
+            if not go.windowGO.isDisplayed then
+                go:Display(0.5)
             end
-            
-            local oOnMouseExit = go.OnMouseExit
-            go.OnMouseExit = function()
-                if not go.isSelected then
-                    backgroundGO:Display(false)
-                end
-                if oOnMouseExit ~= nil then
-                    oOnMouseExit()
-                end
-            end]]
+            onMouseExit(go)
         end
     end
 end
+
 
 
 function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag )
@@ -71,11 +64,11 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag )
     end
 
     windowGO.Show = function( go )
-        windowGO.transform.localScale = 1
+        windowGO.transform.localPosition = Vector3(0)
     end
     
     windowGO.Hide = function( go )
-        windowGO.transform.localScale = 0
+        windowGO.transform.localPosition = Vector3(0,0,99)
     end
 end
 
@@ -180,6 +173,46 @@ function math.clamp( value, min, max )
     value = math.min( value, max )
     return value
 end
+
+
+------------------------------
+-- keep uncommented to hide the backgrounds
+
+Background = {}
+Daneel.modules.Background = Background
+
+function Background.Start()
+
+    local gos = GameObject.GetWithTag("ui")
+    for i, go in pairs (gos ) do
+        local backgroundGO = go:GetChild("Background")
+        if backgroundGO ~= nil then
+            go.backgroundGO = backgroundGO
+            backgroundGO:Display(false)
+            
+            --[[local oOnMouseEnter = go.OnMouseEnter
+            go.OnMouseEnter = function()
+                backgroundGO:Display()
+                if oOnMouseEnter ~= nil then
+                    oOnMouseEnter()
+                end
+            end
+            
+            local oOnMouseExit = go.OnMouseExit
+            go.OnMouseExit = function()
+                if not go.isSelected then
+                    backgroundGO:Display(false)
+                end
+                if oOnMouseExit ~= nil then
+                    oOnMouseExit()
+                end
+            end]]
+        end
+    end
+end
+
+
+------------------------------
 
 --[[
 function Vector2.ToPixel( vector, camera )

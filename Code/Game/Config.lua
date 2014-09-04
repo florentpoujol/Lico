@@ -7,9 +7,15 @@ Game = {
     levelToLoad = nil, -- set in [Level Cartridge/SetData levelNameGO OnClick event]
     deletedLinkCount = 0, -- updated in [Connection/OnClick], used in [Level Master/EndLevel]
     backgroundNextColorId = 1,
-    
-    colorBlindModeActive = false,
 }
+
+Options = {
+    loadedFromStorage = false,
+    
+    screenSize = CS.Screen.GetSize(),
+    uiSize = 6,
+    colorBlindModeActive = false,
+} -- filled by LoadOptions() in [Options]
 
 
 AllowedConnectionsByColor= {
