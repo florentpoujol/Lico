@@ -1,6 +1,7 @@
 
--- allow for mouse over effect other than the tooltip
--- used in [Main Menu/Awake] and [Master Level/Awake]
+-- Allow for mouse over effect other than the tooltip
+-- Must be called after the Tooltip have been init.
+-- Used in [Main Menu/Awake] and [Master Level/Awake]
 function InitIcons()
     local iconGOs = GameObject.Get("UI.Icons").children
     
@@ -16,10 +17,20 @@ function InitIcons()
         
         local onMouseExit = iconGO.OnMouseExit
         iconGO.OnMouseExit = function(go)
-            if not go.windowGO.isDisplayed then
+            if not go.windowGO.isDisplayed then 
+                -- /!\ go.windowGO represents the window last init in InitWindow(), which may represents the Tooltip and not the actual window to be toggled on click.
+                -- hence the importance to init the Tooltip before the actual window
                 go:Display(0.5)
             end
             onMouseExit(go)
+        end
+        
+        -- makes the tooltip BG and arrow slighly transparent
+        local tooltipGO = iconGO:GetChild("Tooltip")
+        if tooltipGO ~= nil then
+            local bg = tooltipGO:GetChild("Background", true)
+            bg.modelRenderer.opacity = 0.6
+            tooltipGO:GetChild("Arrow", true).textRenderer.opacity = 0.6
         end
     end
 end
@@ -59,7 +70,6 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag )
     elseif eventType == "mouseclick" then
         go.OnClick = function()
             windowGO:Display( not windowGO.isDisplayed, true )
-            
         end
     end
 
@@ -86,6 +96,126 @@ end
 
 ----------
 -- GUI
+
+
+function GUI.TextArea.SetText( textArea, text )
+    textArea.Text = text
+
+    local lines = { text }
+    if textArea.newLine ~= "" then
+        lines = string.split( text, textArea.NewLine )
+    end
+
+    local textAreaScale = textArea.gameObject.transform:GetLocalScale()
+
+    -- areaWidth is the max length in units of each line
+    local areaWidth = textArea.AreaWidth
+    if areaWidth ~= nil and areaWidth > 0 then
+        -- cut the lines based on their length
+        local tempLines = table.copy( lines )
+        lines = {}
+
+        for i = 1, #tempLines do
+            local line = tempLines[i]
+
+            if textArea.textRuler:GetTextWidth( line ) * textAreaScale.x > areaWidth then
+                local newLine = ""
+
+                for j = 1, #line do
+                    local char = line:sub(j,j)
+                    newLine = newLine..char
+
+                    if textArea.textRuler:GetTextWidth( newLine ) * textAreaScale.x > areaWidth then
+                        
+                        if char == " " then
+                            table.insert( lines, newLine:sub( 1, #newLine-1 ) )
+                            newLine = char
+                        else
+                            -- a word is cut
+                            -- go backward to find the first space char
+                            local word = ""
+                            for k = #newLine, 1, -1 do
+                                local wordLetter = newLine:sub(k,k)
+                                if wordLetter == " " then
+                                    break
+                                else
+                                    word = wordLetter..word
+                                end
+                            end
+                            
+                            table.insert( lines, newLine:sub( 1, #newLine-#word ) )
+                            newLine = word
+                        end
+
+                        if not textArea.WordWrap then
+                            newLine = nil
+                            break
+                        end
+                    end
+                end
+
+                if newLine ~= nil then
+                    table.insert( lines, newLine )
+                end
+            else
+                table.insert( lines, line )
+            end
+        end -- end loop on lines
+    end
+
+    if type( textArea.linesFilter ) == "function" then
+        lines = textArea.linesFilter( textArea, lines ) or lines
+    end
+    
+    local linesCount = #lines
+    local lineGOs = textArea.lineGOs
+    local oldLinesCount = #lineGOs
+    local lineHeight = textArea.LineHeight / textAreaScale.y
+    local gameObject = textArea.gameObject
+    local textRendererParams = {
+        font = textArea.Font,
+        alignment = textArea.Alignment,
+        opacity = textArea.Opacity,
+    }
+
+    -- calculate position offset of the first line based on vertical alignment and number of lines
+    -- the offset is decremented by lineHeight after every lines
+    local offset = -lineHeight / 2 -- verticalAlignment = "top"
+    if textArea.VerticalAlignment == "middle" then
+        offset = lineHeight * linesCount / 2 - lineHeight / 2
+    elseif textArea.VerticalAlignment == "bottom" then
+        offset = lineHeight * linesCount - lineHeight / 2
+    end
+
+    for i=1, linesCount do
+        local line = lines[i]    
+        textRendererParams.text = line
+
+        if lineGOs[i] ~= nil then
+            lineGOs[i].transform:SetLocalPosition( Vector3:New( 0, offset, 0 ) )
+            lineGOs[i].textRenderer:Set( textRendererParams )
+        else
+            local newLineGO = CS.CreateGameObject( "TextArea" .. textArea.id .. "-Line" .. i, gameObject )
+            newLineGO.transform:SetLocalPosition( Vector3:New( 0, offset, 0 ) )
+            newLineGO.transform:SetLocalScale( Vector3:New(1) )
+            newLineGO:CreateComponent( "TextRenderer" )
+            newLineGO.textRenderer:Set( textRendererParams )
+            table.insert( lineGOs, newLineGO )
+        end
+
+        offset = offset - lineHeight 
+    end
+
+    -- this new text has less lines than the previous one
+    if linesCount < oldLinesCount then
+        for i = linesCount + 1, oldLinesCount do
+            lineGOs[i].textRenderer:SetText( "" ) -- don't destroy the line game object, just remove any text
+        end
+    end
+
+    Daneel.Event.Fire( textArea, "OnUpdate", textArea )
+end
+
 
 function Vector2.ToPixel( vector, camera )
     local vec = Vector2.New(

@@ -4,42 +4,39 @@ Levels = {
     {
         id = 1,
         name = "T1",
-        scenePath = "Levels/Tuto 1",
-        tutoText = 
-[[Link all the nodes together !
-
-Red can connect to Red, Orange, Purple or White
-Yellow can connect to Yellow, Orange, Green or White
-Blue can connect to Blue, Green or Purple
-And so on...
-
-Click on a node to select it (Echap or click again to unselect).
-Click on a node while one is selected to link the two together.]]
+        scenePath = "Levels/T1",
+    },
+    {
+        id = "2",
+        name = "2",
+        scenePath = "Levels/2",
+    },
+    {
+        id = "3",
+        name = "T3",
+        scenePath = "Levels/T3",
     },
     
+        
     {
-    
-        id = 2,
-        name = "T2",
-        scenePath = "Levels/Tuto 2",
-        tutoText = 
-[[Some nodes are required to have a specified number of links.
-
-Two links can not cross each other.
-Click on a link to remove it.
-
-White nodes can connect to everyone.]]
+        id = -1,
+        name = "Test",
+        scenePath = "Levels/Test",     
     },
     
     {
         id = -1,
         name = "Random",
         scenePath = "Levels/Random",
-        isRandom = true,
-        tutoText = 
-[[Random generation MAY produce unsolvable level.]]        
+        isRandom = true,      
     },
 }
+
+
+--table.mergein( Levels, table.copy(Levels))
+--table.mergein( Levels, table.copy(Levels))
+--table.mergein( Levels, table.copy(Levels))
+--table.mergein( Levels, table.copy(Levels))
 
 -- Called from [Levels/Awake]
 function LoadCompletedLevels()

@@ -4,7 +4,7 @@ function Behavior:Awake()
     
     --    
     self.gridGO = self.gameObject:GetChild("Grid Origin", true)
-    self.gridLayout = { x = 3, y = 4 }
+    self.gridLayout = { x = 7, y = 4 }
     self.gridElemCount = self.gridLayout.x * self.gridLayout.y
     
     local UICamera = GameObject.Get("UI Camera")
@@ -51,7 +51,7 @@ function Behavior:BuildLevelGrid()
     for index, level in ipairs( Levels ) do
         if index >= self.firstLevelIndex then
         
-            local cartridgeGO = Scene.Append("Entities/Level Cartridge")
+            local cartridgeGO = Scene.Append("Entities/Level Cartridge 2")
             cartridgeGO.parent = self.gridGO
             cartridgeGO.transform.localPosition = Vector3( self.cartridgeWidth * x, -self.cartridgeHeight * y, 0 )
             

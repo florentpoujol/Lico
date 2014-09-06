@@ -2,12 +2,12 @@
 CS.Screen.SetSize(900, 506) -- 1.78 = 16:9   840x470
 Screen.lastScreenSize = CS.Screen.GetSize()
 
-
 Game = {
     levelToLoad = nil, -- set in [Level Cartridge/SetData levelNameGO OnClick event]
     deletedLinkCount = 0, -- updated in [Connection/OnClick], used in [Level Master/EndLevel]
     backgroundNextColorId = 1,
 }
+
 
 Options = {
     loadedFromStorage = false,
@@ -30,7 +30,18 @@ AllowedConnectionsByColor= {
     White = { "White", "Yellow", "Orange", "Red",  "Purple", "Blue", "Green"  },
 }
 
-SpecialColor = { White = true, Orange = true, Green = true,  Purple = true } -- their color is always used for the connections
+local blockId = 0
+BlockIdsByColor = {
+    White = blockId,
+    Purple = blockId +1,
+    Green = blockId + 2,
+    Orange = blockId + 3,
+    Blue = blockId + 4,
+    Yellow = blockId + 5,
+    Red = blockId + 6,
+}
+
+--SpecialColor = { White = true, Orange = true, Green = true,  Purple = true } -- their color is always used for the connections
 
 Scenes = {
     main_menu = "Main Menu",

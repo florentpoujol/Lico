@@ -1,22 +1,24 @@
 
 function Behavior:Awake()
-    local bg = GameObject.New("Background")
+    local bg = Scene.Append("Background")
     local mask = bg:GetChild("Mask", true)
-    mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
+    --mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
     
     ----------
-    -- spawn level content
+    -- Spawn level content
     
     local level = Game.levelToLoad or Levels[1]
     local content = Scene.Append( level.scenePath )
     
-    --
+    -- reparent the nodes
     local nodes = content:GetChild("Nodes")
     nodes.parent = GameObject.Get("Nodes Parent")
     nodes.transform.localPosition = Vector3(0)
     
-    --
-    local helpWindowGO = nil -- used below on Icons section
+    ----------
+    -- Help/tutorial window
+    
+    local helpWindowGO = nil -- set below, used in Icons section
     
     local helpGO = content:GetChild("Help")
     if helpGO ~= nil then
@@ -37,32 +39,33 @@ function Behavior:Awake()
             windowGO.transform.localPosition = Vector3(0)
         end
     end
-    
-    --
-    if level.tutoText ~= nil then
-        --self:SetupTuto( level )
-    end
-    
-    self:UpdateLevelCamera()
-    Daneel.Event.Listen("RandomLevelGenerated", function() self:UpdateLevelCamera() end )
-    
-    -- update the orthographic scale of the world camera so that the whole level but not more is visible
-    
+
     ----------
     -- Icons
-    
-    local helpGO = GameObject.Get("Icons.Help")
-    helpGO:InitWindow("Tooltip", "mouseover", "ui")
-    
-    if helpWindowGO ~= nil then
-        helpGO:InitWindow(helpWindowGO, "mouseclick")
-    end
+
+    local helpIconGO = GameObject.Get("Icons.Help")
+    helpIconGO:InitWindow("Tooltip", "mouseover", "ui")
     
     InitIcons() -- in [Helpers]
+    -- in this case, must be called after the Tooltip have been init.
+    
+    if helpWindowGO ~= nil then
+        
+        helpIconGO:InitWindow(helpWindowGO, "mouseclick")
+        
+        helpIconGO:OnClick() -- display the help window
+        helpIconGO:OnMouseEnter() -- highlight the icon
+        helpIconGO:OnMouseExit() -- hide the Tooltip
+        
+        -- can't decide if simuling mouse envents like that is smart or ugly
+    else
+        helpIconGO:Destroy()
+    end
+    
     
     
     ----------
-    -- end level
+    -- End level
     
     Game.levelEnded = false
     Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Node/CheckVictory]
@@ -71,6 +74,14 @@ function Behavior:Awake()
     
     self.endLevelGO = GameObject.Get("End Level")
     self.endLevelGO.transform.localPosition = Vector3(0,-40,0)
+    
+    
+     --
+    self:UpdateLevelCamera()
+    Daneel.Event.Listen("RandomLevelGenerated", function() self:UpdateLevelCamera() end )
+    
+    -- update the orthographic scale of the world camera so that the whole level but not more is visible
+    
     
     --
     UpdateUISize()
@@ -178,67 +189,3 @@ function Behavior:EndLevel()
         gos["Next Level"].textRenderer.text = nextLevel.name
     end
 end
-
-
-function Behavior:SetupTuto( level )
-    local tutoUICameraGO = GameObject.New("Levels/Tuto UI")
-    tutoUICameraGO.transform.position = Vector3(-500,0,0)
-    
-    local uiGO = tutoUICameraGO:GetChild("Tuto UI")
-    local infoGO = uiGO:GetChild("Info")
-    local iconGO = infoGO:GetChild("Icon")
-    iconGO:AddTag("tutoui")
-    iconGO:InitWindow("Tooltip", "mouseclick")
-    
-    local textGO = infoGO:GetChild("Text Area", true)
-    textGO:AddComponent("TextArea", {
-        font = "Calibri",
-        newLine = "\n",
-        alignment = "left",
-        lineHeight = 2.5/0.2,
-        areaWidth = 57/0.2,
-        wordWrap = true,
-        text = level.tutoText    
-    })
-    
-    if level.scenePath == "Levels/Tuto 1" then
-        -- put the fnodes in a perfect circle
-        local radius = 5
-        local nodes = GameObject.Get("Tuto 1 Nodes").children
-        
-        -- equation of a circle
-        -- x=rcosθ, y=rsinθ
-        local angle = 0
-        local angleOffset = 360/#nodes
-
-        for i, go in ipairs( nodes ) do
-            go.transform.localPosition = Vector3(
-                radius * math.cos( math.rad( angle ) ),
-                radius * math.sin( math.rad( angle ) ),
-                0
-            )
-            angle = angle + angleOffset
-        end
-    
-    elseif level.scenePath == "Levels/Tuto 2" then
-        -- put the fnodes in a perfect circle
-        local radius = 5
-        local nodes = GameObject.Get("Tuto 2 Nodes").children
-        table.remove( nodes ) -- remove "Others" game object
-        
-        -- equation of a circle
-        -- x=rcosθ, y=rsinθ
-        local angle = 75
-        local angleOffset = 360/#nodes
-
-        for i, go in ipairs( nodes ) do
-            go.transform.localPosition = Vector3(
-                radius * math.cos( math.rad( angle ) ),
-                radius * math.sin( math.rad( angle ) ),
-                0
-            )
-            angle = angle + angleOffset
-        end
-    end
-end
-

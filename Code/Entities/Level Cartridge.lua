@@ -2,6 +2,10 @@ function Behavior:Awake()
     self.gameObject.s = self
     
     self.completedGO = self.gameObject:GetChild("Completed")
+    
+    local bgGO = self.gameObject:GetChild("Background")
+    local color = AllowedConnectionsByColor.White[ math.random(2, #AllowedConnectionsByColor.White) ]
+    bgGO.modelRenderer.model = "Nodes/"..color
 end
 
 function Behavior:SetData( level )

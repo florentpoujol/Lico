@@ -69,23 +69,10 @@ function Behavior:SetColor( color )
     self.color = color
         
     local colorGO = self.gameObject:GetChild("Color")
-    
-    if colorGO == nil then
-        colorGO = GameObject.New("Color", {
-            parent = self.gameObject,
-            transform = {
-                localPosition = Vector3(0),
-            },
-            modelRenderer = {
-                model = "Nodes/"..color
-            },
-        })
-        
-        self.gameObject.modelRenderer:Destroy()
-    else
-
-        colorGO.modelRenderer.model = "Nodes/"..color
-    end
+    --colorGO.modelRenderer.model = "Nodes/"..color
+    colorGO.mapRenderer:LoadNewMap( function(map)
+        map:SetBlockAt(0,0,0, BlockIdsByColor[ color ])
+    end)
     
     colorGO:AddTag("node_model")
     colorGO.OnClick = function() self:OnClick() end
@@ -168,7 +155,7 @@ function Behavior:Select( select )
 end
 
 
--- check there isn't a bar in between
+-- Check there isn't a link or other node in between
 function Behavior:CanLink( targetGO )  
     -- check that the intersection point between the (potential) link line and al other links
     local selfPosition = self.gameObject.transform.position
@@ -198,7 +185,7 @@ function Behavior:CanLink( targetGO )
         local y4 = linkGO.s.nodePositions[2].y
         local point4 = Vector2(x4,y4)
         
-        -- formula from: 
+        -- formula for line-line intersection from: 
         -- http://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
         
         -- first, check if the lines are parralell
@@ -218,7 +205,7 @@ function Behavior:CanLink( targetGO )
             local pointi = Vector2(xi,yi)
             
             -- now check if the point is inside both segments which means the links actually intersects.
-            -- the point is inside a segment if the distance to the two points of the segment is now greater than the distance between the two points
+            -- the point is inside a segment if the distance to the two points of the segment is no greater than the distance between the two points
             
             local link1SqrLength = (point1 - point2):GetSqrLength()
             local point1SqrDistance = (point1 - pointi):GetSqrLength()
@@ -237,7 +224,7 @@ function Behavior:CanLink( targetGO )
         end
     end
     
-    -- check there isn't a bar in between
+    -- check there isn't another node in between, too
     local ray = Ray:New(otherPosition, (selfPosition - otherPosition):Normalized() )
 
     local nodeGOs = GameObject.GetWithTag( "node_model" )
@@ -250,7 +237,7 @@ function Behavior:CanLink( targetGO )
     
     local hit = ray:Cast( nodeGOs, true )[1]
 
-    if hit == nil or hit.distance > (selfPosition - otherPosition):GetLength() then
+    if hit == nil or hit.distance^2 > (selfPosition - otherPosition):GetSqrLength() then
         return true
     end
     return false
@@ -267,23 +254,39 @@ function Behavior:Link( targetGO )
     local direction = otherPosition - selfPosition
     local linkLength = direction:Length()
     
-    linkGO.transform:Move( direction:Normalized() * 0.5 )
+    linkGO.transform:Move( direction:Normalized() * 0.3 )
     
     linkGO.transform:LookAt( otherPosition )
     local angles = linkGO.transform.localEulerAngles
     local y = math.round( angles.y )
     
-    if y == 90 then
-        -- links that goes upward
-        angles.z = -180
+    -- x direction
+    -- -90 = totally bottom
+    -- <0  toward bottom
+    -- 0 = totally flat
+    -- >0 toward up
+    -- 90 = totally up   
+    
+    -- y  direction
+    -- 0 vertical
+    -- -90 toward right
+    -- 90 toward left
+    
+    
+    if y == 0 then
+        -- totally upward link
+        if angles.x < 0 then -- toward bottom
+            angles.z = 270 
+        elseif angles.x > 0 then -- toward up
+            angles.z = 90
+        end
         linkGO.transform.localEulerAngles = angles
-    elseif y == 0 then
-        -- totally vertical link
-        angles.z = 90 -- totally wild guess
+    elseif y == 90 then
+        angles.z = -180
         linkGO.transform.localEulerAngles = angles
     end
     
-    linkGO.transform.localScale = Vector3(0.3,0.3, linkLength-1 )
+    linkGO.transform.localScale = Vector3(0.3,0.3, linkLength-0.6 )
 
     linkGO.s:SetColor( self.color, targetGO.s.color )
     

@@ -1,12 +1,12 @@
 
 function Behavior:Awake()
-    local camGO = GameObject.Get( "Game Background" )
+    local camGO = GameObject.Get("Game Background")
     self.gameObject.parent = camGO
     self.gameObject.transform.localPosition = Vector3(0,0,-50)
     
     self:ResizeBackground()
     Daneel.Event.Listen( "OnScreenResized", function() self:ResizeBackground() end )
-  
+    
     self.frontGO = self.gameObject:GetChild("Front")
     self.backGO = self.gameObject:GetChild("Back")
     
