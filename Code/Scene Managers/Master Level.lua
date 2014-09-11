@@ -124,7 +124,7 @@ function Behavior:EndLevel()
     -- prevent nodes to be selected
     local nodes = GameObject.GetWithTag("node")
     for i, node in pairs( nodes ) do
-        node.s.colorGO:RemoveTag("node_model")
+        node.s.rendererGO:RemoveTag("node_renderer")
         node.s:Select(false)
     end
     

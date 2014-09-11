@@ -13,15 +13,15 @@ Ie:]],
     controls = 
 [[Controls:
 Hover on a square to select it (press the Escape key to unselect it).
-Hover another node to link them together (when possible).]]
+Hover another node to link them together (when possible).]],
     
     links =
 [[Links:
-Links can't do cross each others.
+Links can't cross each others.
 Click on a link to remove it.
 
 Some squares must have an exact number of links to complete the level
-can't have more or less links than displayed
+
 ]]
 
 }

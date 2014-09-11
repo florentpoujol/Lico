@@ -30,8 +30,23 @@ AllowedConnectionsByColor= {
     White = { "White", "Yellow", "Orange", "Red",  "Purple", "Blue", "Green"  },
 }
 
+---------
+
 local blockId = 0
-BlockIdsByColor = {
+BlockIds = {
+    Square = {
+        White = blockId,
+        Purple = blockId +1,
+        Green = blockId + 2,
+        Orange = blockId + 3,
+        Blue = blockId + 4,
+        Yellow = blockId + 5,
+        Red = blockId + 6,
+   },
+}
+
+blockId = blockId + 16
+BlockIds.Triangle = {
     White = blockId,
     Purple = blockId +1,
     Green = blockId + 2,
@@ -41,12 +56,26 @@ BlockIdsByColor = {
     Red = blockId + 6,
 }
 
---SpecialColor = { White = true, Orange = true, Green = true,  Purple = true } -- their color is always used for the connections
+blockId = blockId + 16
+BlockIds.Circle = {
+    White = blockId,
+    Purple = blockId +1,
+    Green = blockId + 2,
+    Orange = blockId + 3,
+    Blue = blockId + 4,
+    Yellow = blockId + 5,
+    Red = blockId + 6,
+}
+
+
+
 
 Scenes = {
     main_menu = "Main Menu",
     background = "Background"
 }
+
+-------
 
 Daneel.UserConfig = {
     debug = {
