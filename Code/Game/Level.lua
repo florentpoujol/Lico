@@ -7,15 +7,31 @@ Levels = {
         scenePath = "Levels/T1",
     },
     {
-        id = "2",
+        id = 2,
         name = "2",
         scenePath = "Levels/2",
     },
     {
-        id = "3",
+        id = 3,
         name = "T3",
         scenePath = "Levels/T3",
     },
+    {
+        id = 4,
+        name = "4",
+        scenePath = "Levels/4",
+    },
+    {
+        id = 5,
+        name = "T5",
+        scenePath = "Levels/T5",
+    },
+    {
+        id = 6,
+        name = "6",
+        scenePath = "Levels/6",
+    },
+    
     
         
     {
@@ -25,7 +41,7 @@ Levels = {
     },
     
     {
-        id = -1,
+        id = -2,
         name = "Random",
         scenePath = "Levels/Random",
         isRandom = true,      

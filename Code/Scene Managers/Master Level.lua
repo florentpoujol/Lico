@@ -62,6 +62,30 @@ function Behavior:Awake()
         helpIconGO:Destroy()
     end
     
+    --
+    local nextIconGO = GameObject.Get("Icons.Next Level")
+    
+    if helpWindowGO == nil then
+        nextIconGO.transform:Move(Vector3(-5,0,0))
+    end
+    
+    nextIconGO:Display(false)
+    
+    local oOnMouseEnter = nextIconGO.OnMouseEnter
+    nextIconGO.OnMouseEnter = function(go)
+        if Game.levelEnded then
+            oOnMouseEnter(go)
+        end
+    end
+    
+    local oOnMouseExit = nextIconGO.OnMouseExit
+    nextIconGO.OnMouseExit = function(go)
+        if Game.levelEnded then
+            oOnMouseExit(go)
+        end
+    end
+    
+    self.nextIconGO = nextIconGO
     
     
     ----------
@@ -98,8 +122,9 @@ function Behavior:UpdateLevelCamera()
         end
     end
 
-    GameObject.Get("World Camera").camera.orthographicScale = math.ceil(maxY + 1) * 2
-    
+    local scale = math.ceil(maxY + 1) * 2
+    GameObject.Get("World Camera").camera.orthographicScale = math.max( scale, 10 )
+
     if Game.levelToLoad.name == "Random" then
         GameObject.Get("World Camera").camera.orthographicScale = 20
         --print("set camera")
@@ -125,8 +150,46 @@ function Behavior:EndLevel()
     local nodes = GameObject.GetWithTag("node")
     for i, node in pairs( nodes ) do
         node.s.rendererGO:RemoveTag("node_renderer")
-        node.s:Select(false)
     end
+    
+    Tween.Timer( 0.1, function()
+        local selectedNode = GameObject.GetWithTag("selected_node")[1]
+        if selectedNode ~= nil then
+            selectedNode.s:Select(false)
+        end
+    end )
+    
+    -- prevent links to be removed
+    local links = GameObject.GetWithTag("link")
+    for i, link in pairs( links ) do
+        link:RemoveTag("link")
+    end
+    
+    
+    -- next level
+    if Game.levelToLoad.name ~= "Random" then
+        local currentLevel = GetLevel( Game.levelToLoad.name )
+        currentLevel.isCompleted = true
+        SaveCompletedLevels()
+        
+        local nextLevel = nil
+        for i, level in ipairs( Levels ) do
+            if not level.isCompleted and level.id > currentLevel.id then
+                nextLevel = level
+                break
+            end
+        end
+        if nextLevel == nil then
+            nextLevel = Levels[ math.random( #Levels ) ]
+        end
+        Game.levelToLoad = nextLevel
+    end
+    
+    self.nextIconGO:Display(true)
+    self.nextIconGO:OnMouseEnter() -- makes the tooltip show so that the player nows what the new button is for
+    
+    
+    do return end
     
     --
     Tween.Tweener(self.endLevelGO.transform, "localPosition", Vector3(0), 1.5, {

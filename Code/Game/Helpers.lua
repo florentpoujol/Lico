@@ -94,6 +94,12 @@ function GetSelectedNodes()
     return GameObject.GetWithTag( "selected_node" )[1]
 end
 
+function GetPositionOnCircle( radius, angle )
+    return 
+    radius * math.cos( math.rad( angle ) ),
+    radius * math.sin( math.rad( angle ) )
+end
+
 ----------
 -- GUI
 

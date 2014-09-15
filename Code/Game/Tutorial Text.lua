@@ -15,14 +15,15 @@ Ie:]],
 Hover on a square to select it (press the Escape key to unselect it).
 Hover another node to link them together (when possible).]],
     
-    links =
-[[Links:
-Links can't cross each others.
-Click on a link to remove it.
+    maxLinks =
+[[The white segments around a node represents the MAXIMUM number of links a node CAN make.
 
-Some squares must have an exact number of links to complete the level
+You can click on a link to remove it.]],
 
-]]
+requiredLinks = [[The black segments around a node represents the number of links the node is REQUIRED to make to complete the level.
+
+Also, links can't cross each others.]],
+
 
 }
 

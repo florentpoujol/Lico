@@ -56,7 +56,8 @@ BlockIds.Triangle = {
     Red = blockId + 6,
 }
 
-blockId = blockId + 16
+--blockId = blockId + 16
+blockId = 0
 BlockIds.Circle = {
     White = blockId,
     Purple = blockId +1,
