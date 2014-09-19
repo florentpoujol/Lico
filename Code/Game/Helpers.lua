@@ -6,6 +6,57 @@ function InitIcons()
     local iconGOs = GameObject.Get("UI.Icons").children
     
     for i, iconGO in pairs( iconGOs ) do
+        local rendererGO = GameObject.New("Renderer", {
+            parent = iconGO,
+            transform = {
+                localPosition = Vector3(0),
+                localScale = 1,
+            },
+            textRenderer = {
+                font = iconGO.textRenderer.font,
+                text = iconGO.textRenderer.text
+            }
+        } )
+        iconGO.rendererGO = rendererGO
+        iconGO.textRenderer.opacity = 0.01
+        
+        rendererGO:Display(0.5)
+        
+        -- override OnMouseEnter/Exit set by GO.InitWindow()
+        local onMouseEnter = iconGO.OnMouseEnter
+        iconGO.OnMouseEnter = function(go)
+            rendererGO:Display(1)
+            onMouseEnter(go)
+        end
+        
+        local onMouseExit = iconGO.OnMouseExit
+        iconGO.OnMouseExit = function(go)
+            if not go.windowGO.isDisplayed then 
+                -- /!\ go.windowGO represents the window last init in InitWindow(), which may represents the Tooltip and not the actual window to be toggled on click.
+                -- hence the importance to init the Tooltip before the actual window
+                rendererGO:Display(0.5)
+            end
+            onMouseExit(go)
+        end
+        
+        -- on left click pressed, scale down the icon
+        local scaleModifier = 0.8
+        iconGO.OnClick = function(go)
+            local scale = rendererGO.transform.localScale
+            rendererGO.transform.localScale = scale * scaleModifier
+        end
+        
+        local onLeftClickReleased = iconGO.OnLeftClickReleased -- set by GO.InitWindow()
+        iconGO.OnLeftClickReleased = function(go)
+            local scale = rendererGO.transform.localScale
+            rendererGO.transform.localScale = scale / scaleModifier
+            
+            if onLeftClickReleased ~= nil then
+                onLeftClickReleased()
+            end
+        end
+        
+        --[[
         iconGO:Display(0.5)
         
         -- override OnMouseEnter/Exit set by GO.InitWindow()
@@ -25,6 +76,23 @@ function InitIcons()
             onMouseExit(go)
         end
         
+        -- on left click pressed, scale down the icon
+        local scaleModifier = 0.8
+        iconGO.OnClick = function(go)
+            local scale = go.transform.localScale
+            go.transform.localScale = scale * scaleModifier
+        end
+        
+        local onLeftClickReleased = iconGO.OnLeftClickReleased -- set by GO.InitWindow()
+        iconGO.OnLeftClickReleased = function(go)
+            local scale = go.transform.localScale
+            go.transform.localScale = scale / scaleModifier
+            
+            if onLeftClickReleased ~= nil then
+                onLeftClickReleased()
+            end
+        end]]
+        
         -- makes the tooltip BG and arrow slighly transparent
         local tooltipGO = iconGO:GetChild("Tooltip")
         if tooltipGO ~= nil then
@@ -37,7 +105,7 @@ end
 
 
 
-function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag )
+function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, animationFunction )
     if tag ~= nil then
         go:AddTag(tag)
     end
@@ -68,8 +136,12 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag )
         end
         
     elseif eventType == "mouseclick" then
-        go.OnClick = function()
-            windowGO:Display( not windowGO.isDisplayed, true )
+        go.OnLeftClickReleased = function()
+            if animationFunction == nil then
+                windowGO:Display( not windowGO.isDisplayed, true )
+            else
+                animationFunction( windowGO )
+            end
         end
     end
 
@@ -99,6 +171,34 @@ function GetPositionOnCircle( radius, angle )
     radius * math.cos( math.rad( angle ) ),
     radius * math.sin( math.rad( angle ) )
 end
+
+---------------
+-- screen
+
+CraftStudio.Screen.oSetSize = CraftStudio.Screen.SetSize
+
+--- Sets the size of the screen, in pixels.
+-- @params x (number or table) The width of the screen or a table representing the width and height as x and and y components.
+-- @params y (number) [optional] The height of the screen (optional when the "x" argument is a table).
+function CraftStudio.Screen.SetSize( x, y )
+    if type( x ) == "table" then
+        y = x.y
+        x = x.x
+    end
+    CraftStudio.Screen.oSetSize( x, y )
+    -- done here so that the aspecty ratio doesn't change is the window is not rezisable
+    CraftStudio.Screen.GetSize() -- reset aspect ratio
+end
+
+--- Return the size of the screen, in pixels.
+-- @return (Vector2) The screen's size.
+function CraftStudio.Screen.GetSize()
+    local screenSize = CraftStudio.Screen.oGetSize()
+    CraftStudio.Screen.aspectRatio = screenSize.x / screenSize.y
+    return setmetatable( screenSize, Vector2 )
+end
+CraftStudio.Screen.GetSize() -- set aspect ratio
+
 
 ----------
 -- GUI

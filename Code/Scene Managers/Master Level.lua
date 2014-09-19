@@ -46,20 +46,24 @@ function Behavior:Awake()
     local helpIconGO = GameObject.Get("Icons.Help")
     helpIconGO:InitWindow("Tooltip", "mouseover", "ui")
     
-    InitIcons() -- in [Helpers]
+    --InitIcons() -- in [Helpers]
     -- in this case, must be called after the Tooltip have been init.
     
     if helpWindowGO ~= nil then
         
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
+        InitIcons()
         
         helpIconGO:OnClick() -- display the help window
+        helpIconGO:OnLeftClickReleased()
+        
         helpIconGO:OnMouseEnter() -- highlight the icon
         helpIconGO:OnMouseExit() -- hide the Tooltip
         
         -- can't decide if simuling mouse envents like that is smart or ugly
     else
         helpIconGO:Destroy()
+        InitIcons()
     end
     
     --

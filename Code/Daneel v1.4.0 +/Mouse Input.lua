@@ -32,7 +32,6 @@ end
 ----------------------------------------------------------------------------------
 
 
-
 function Behavior:Awake()
     if not MouseInput.isLoaded then
         if table.getvalue( _G, "MouseInputUserConfig" ) ~= nil and type( MouseInputUserConfig ) == "function" then
@@ -60,6 +59,7 @@ function Behavior:Awake()
     Daneel.Debug.StackTrace.EndFunction()
 end
 
+
 function Behavior:Update()
     self.frameCount = self.frameCount + 1
     
@@ -71,9 +71,11 @@ function Behavior:Update()
 
     local leftMouseJustPressed = false
     local leftMouseDown = false
+    local leftMouseJustReleased = false
     if MouseInput.buttonExists.LeftMouse then
         leftMouseJustPressed = CS.Input.WasButtonJustPressed( "LeftMouse" )
         leftMouseDown = CS.Input.IsButtonDown( "LeftMouse" )
+        leftMouseJustReleased = CS.Input.WasButtonJustReleased( "LeftMouse" )
     end
 
     local rightMouseJustPressed = false
@@ -95,6 +97,7 @@ function Behavior:Update()
         mouseIsMoving or
         leftMouseJustPressed or 
         leftMouseDown or
+        leftMouseJustReleased or        
         rightMouseJustPressed or
         wheelUpJustPressed or
         wheelDownJustPressed or
@@ -139,6 +142,7 @@ function Behavior:Update()
 
                             if leftMouseJustPressed then
                                 Daneel.Event.Fire( gameObject, "OnClick", gameObject )
+                                --Daneel.Event.Fire( gameObject, "OnLeftClickPressed", gameObject )
 
                                 if doubleClick then
                                     Daneel.Event.Fire( gameObject, "OnDoubleClick", gameObject )
@@ -147,6 +151,10 @@ function Behavior:Update()
 
                             if leftMouseDown and mouseIsMoving then
                                 Daneel.Event.Fire( gameObject, "OnDrag", gameObject )
+                            end
+                            
+                            if leftMouseJustReleased then
+                                Daneel.Event.Fire( gameObject, "OnLeftClickReleased", gameObject )
                             end
 
                             if rightMouseJustPressed then

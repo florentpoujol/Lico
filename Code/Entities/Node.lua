@@ -330,6 +330,7 @@ function Behavior:CanLink( targetGO )
     return false
 end
 
+local linkPositionOffset = 0.7
 
 function Behavior:Link( targetGO )
     local linkGO = Scene.Append("Entities/Link")
@@ -342,7 +343,7 @@ function Behavior:Link( targetGO )
     local direction = otherPosition - selfPosition
     local linkLength = direction:Length()
     
-    local linkPositionOffset = 0.7
+    
     linkGO.transform:Move( direction:Normalized() * linkPositionOffset )
     
     linkGO.transform:LookAt( otherPosition )
@@ -542,7 +543,9 @@ function Behavior:Update()
         local opacity = math.lerp( 1, 0, self.frameCount/linkMarksFadeOutFrames )
 
         for i=1, self.maxLinkCount do
-            self.linkMarkGOs[i].modelRenderer.opacity = opacity
+            if self.linkMarkGOs[i].modelRenderer.opacity ~= 0 then
+                self.linkMarkGOs[i].modelRenderer.opacity = opacity
+            end
         end
         
         self.frameCount = self.frameCount + 1
