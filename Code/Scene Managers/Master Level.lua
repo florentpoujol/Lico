@@ -72,8 +72,11 @@ function Behavior:Awake()
     if helpWindowGO == nil then
         nextIconGO.transform:Move(Vector3(-5,0,0))
     end
+    InitIcons()
     
-    nextIconGO:Display(false)
+    nextIconGO.rendererGO:Display(false)
+    nextIconGO.transform:MoveLocal(Vector3(0,0,10))
+
     
     local oOnMouseEnter = nextIconGO.OnMouseEnter
     nextIconGO.OnMouseEnter = function(go)
@@ -90,6 +93,7 @@ function Behavior:Awake()
     end
     
     self.nextIconGO = nextIconGO
+    
     
     
     ----------
@@ -113,6 +117,10 @@ function Behavior:Awake()
     
     --
     UpdateUISize()
+end
+
+function Behavior:Start()
+
 end
 
 
@@ -189,70 +197,7 @@ function Behavior:EndLevel()
         Game.levelToLoad = nextLevel
     end
     
-    self.nextIconGO:Display(true)
+    self.nextIconGO.rendererGO:Display(true)
     self.nextIconGO:OnMouseEnter() -- makes the tooltip show so that the player nows what the new button is for
-    
-    
-    do return end
-    
-    --
-    Tween.Tweener(self.endLevelGO.transform, "localPosition", Vector3(0), 1.5, {
-        easeType = "outElastic",
-    } )
-    
-    --[[self.endLevelGO:Animate("localPosition", Vector3(0), 1, {
-        easeType = "outElastic",
-    } )]] 
-    -- Animate doesn't work with "localPosition"
-    
-    local gos = self.endLevelGO:GetChild("Content").childrenByName
-    
-    --
-    local timeGO = gos.Time.child
-    local time = os.clock() - self.levelStartTime
-    local minutes = math.floor( time/60 )
-    if minutes < 10 then
-        minutes = "0"..minutes
-    end
-    local seconds = math.round( time % 60 )
-    if seconds < 10 then
-        seconds = "0"..seconds
-    end
-    if time < 60 then
-        timeGO.textRenderer.text = seconds.."s"
-    else
-        timeGO.textRenderer.text = minutes.."m "..seconds.."s"
-    end
-    
-    gos.Link.child.textRenderer.text = #GameObject.GetWithTag( "link" )
-    gos["Broken Link"].child.textRenderer.text = Game.deletedLinkCount
-    
-    -- next level
-    if Game.levelToLoad.name == "Random" then
-        gos["Next Level Help"].textRenderer.text = ""
-        gos["Next Level"].textRenderer.text = ""
-        
-        local playGO = gos.Play
-        playGO.textRenderer.text = "0" -- refresh
-        local textGO = playGO:GetChild("Text", true)
-        textGO.textRenderer.text = "Generate again"
-
-    else
-        local currentLevel = GetLevel( Game.levelToLoad.name )
-        currentLevel.isCompleted = true
-        SaveCompletedLevels()
-        
-        local nextLevel = nil
-        for i, level in ipairs( Levels ) do
-            if not level.isCompleted then
-                nextLevel = level
-                break
-            end
-        end
-        if nextLevel == nil then
-            nextLevel = Levels[ math.random( #Levels ) ]
-        end
-        Game.levelToLoad = nextLevel
-        gos["Next Level"].textRenderer.text = nextLevel.name
-    end
+    self.nextIconGO.transform:MoveLocal(Vector3(0,0,-10))
 end

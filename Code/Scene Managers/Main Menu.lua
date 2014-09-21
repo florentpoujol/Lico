@@ -10,82 +10,51 @@ function Behavior:Awake()
     Daneel.Event.Listen("OnScreenResized", Game.updateWindowMask)
     
     local windowAnimation = function( windowGO )
-        self.windowMaskGO.modelRenderer.model = frontBackgroundModel
-        self.windowMaskGO:Animate("opacity", 1, 0.5, function()
-            windowGO:Display( not windowGO.isDisplayed, true ) -- optionsWindowGO
-            self.windowMaskGO:Animate("opacity", 0, 0.5)
-        end )
+        if not windowGO.isDisplayed then
+            self.windowMaskGO.modelRenderer.model = frontBackgroundModel -- frontBackgroundModel is set in [Background/Awake]
+            self.windowMaskGO:Animate("opacity", 1, 0.5, function()
+                windowGO:Display()
+                self.windowMaskGO:Animate("opacity", 0, 0.5)
+            end )
+        end
     end
-    
-    local creditsGO = GameObject.Get("UI.Icons.Credits")
-    creditsGO:InitWindow("Tooltip", "mouseover")
-    creditsGO:InitWindow("Windows.Credits", "mouseclick", "ui", windowAnimation)
-   
-    
-    --
+
+    -- credit window   
+    local creditsGO = GameObject.Get("Icons.Credits.Renderer")
+    creditsGO:InitWindow("Windows.Credits", "mouseclick", nil, windowAnimation, "main_menu_window")
+
+    -- options
     local optionsWindowGO = GameObject.Get("Windows.Options")
-    local contentGO = Scene.Append("Menus/Options")
-    contentGO.parent = optionsWindowGO
-    contentGO.transform.localPosition = Vector3(0)
+    optionsWindowGO:Append("Menus/Options")
+  
+    local buttonGO = GameObject.Get("Icons.Options.Renderer")
+    buttonGO:InitWindow(optionsWindowGO, "mouseclick", nil, windowAnimation, "main_menu_window")
     
-    local buttonGO = GameObject.Get("Icons.Options")
-    buttonGO:InitWindow("Tooltip", "mouseover")
-    buttonGO:InitWindow(optionsWindowGO, "mouseclick", "ui", windowAnimation)
-    
-    --
+    -- levels
     local windowGO = GameObject.Get("Windows.Levels")
-    local contentGO = Scene.Append("Menus/Levels")
-    contentGO.parent = windowGO
-    contentGO.transform.localPosition = Vector3(0)
+    windowGO:Append("Menus/Levels")
     
-    local buttonGO = GameObject.Get("Icons.Levels")
-    buttonGO:InitWindow("Tooltip", "mouseover")
-    buttonGO:InitWindow(windowGO, "mouseclick", "ui", windowAnimation)
+    local buttonGO = GameObject.Get("Icons.Levels.Renderer")
+    buttonGO:InitWindow(windowGO, "mouseclick", nil, windowAnimation, "main_menu_window")
     
     --
     local allWindows =  GameObject.Get("UI.Windows").children
-            
-    local hideAllOtherWindows = function( meGO )
-        for i, windowGO in pairs( allWindows ) do
-            if windowGO ~= meGO and windowGO.isDisplayed then
-                windowGO:Display(false, true)
-                
-                windowGO.buttonGO.isSelected = false -- 19/09 is it used ?
-                --windowGO.buttonGO:Display(0.5)
-                windowGO.buttonGO.rendererGO:Display(0.5)
-            end
-        end
-    end
     
-    for i, windowGO in pairs( allWindows ) do       
+    for i, windowGO in pairs( allWindows ) do
+        local oOnDisplay = windowGO.OnDisplay -- set by GameObject.InitWindow()
         windowGO.OnDisplay = function( go )
+            oOnDisplay(go)
+            
             if go.isDisplayed then
-                go.buttonGO.isSelected = true -- 19/09 is it used
-                --go.buttonGO:Display(1)
-                windowGO.buttonGO.rendererGO:Display(1)
-                
-                hideAllOtherWindows( go )
+                go.buttonGO:Display(1)
+            else
+                go.buttonGO:Display(0.5)
             end
         end
     end
-    
-    --
-    local allIcons = GameObject.Get("UI.Icons").children
-    
-    for i, iconGO in pairs( allIcons ) do
-        iconGO.isSelected = false
-        
-        local oOnClick = iconGO.OnLeftClickReleased -- set by GameObject.InitWindow()
-        -- overrride to prevent hiding a displayed window by clicking on the same button
-        iconGO.OnLeftClickReleased = function()
-            if not iconGO.windowGO.isDisplayed then -- ref to the windowGO is set in GameObject.InitWindow()               
-                oOnClick( windowGO )
-            end
-        end
-    end
-    
-    InitIcons()
-    
+   
+    InitIcons() -- actually this will be called latter in [Options/Start]
+
     --
     Daneel.Event.Listen("OnScreenResized", SaveOptions, true ) -- save the new resolution/ui size, whenever the resolution/ui size are modified 
     Daneel.Event.Listen("OptionsLoaded", function()
@@ -99,13 +68,10 @@ end
 function Behavior:UpdateWindowMask()
     local orthoScale = GameObject.Get("UI Camera").camera.orthographicScale
     self.windowMaskGO.transform.localScale = Vector3( orthoScale * CS.Screen.aspectRatio, orthoScale, 0.1 )
-    print("update window mask", orthoScale, CS.Screen.aspectRatio )
 end
 
 
 function Behavior:Start()
-    local levelsButton = GameObject.Get("Icons.Levels")
-    levelsButton:OnClick()
+    local levelsButton = GameObject.Get("Icons.Levels.Renderer")
     levelsButton:OnLeftClickReleased() -- Select levels window
-     --levelsButton:OnMouseExit()
 end

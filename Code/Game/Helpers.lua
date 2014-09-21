@@ -1,115 +1,67 @@
 
 -- Allow for mouse over effect other than the tooltip
--- Must be called after the Tooltip have been init.
 -- Used in [Main Menu/Awake] and [Master Level/Awake]
 function InitIcons()
-    local iconGOs = GameObject.Get("UI.Icons").children
+    local iconGOs = GameObject.GetWithTag("icon")
     
     for i, iconGO in pairs( iconGOs ) do
-        local rendererGO = GameObject.New("Renderer", {
-            parent = iconGO,
-            transform = {
-                localPosition = Vector3(0),
-                localScale = 1,
-            },
-            textRenderer = {
-                font = iconGO.textRenderer.font,
-                text = iconGO.textRenderer.text
-            }
-        } )
-        iconGO.rendererGO = rendererGO
-        iconGO.textRenderer.opacity = 0.01
-        
-        rendererGO:Display(0.5)
-        
-        -- override OnMouseEnter/Exit set by GO.InitWindow()
-        local onMouseEnter = iconGO.OnMouseEnter
-        iconGO.OnMouseEnter = function(go)
-            rendererGO:Display(1)
-            onMouseEnter(go)
-        end
-        
-        local onMouseExit = iconGO.OnMouseExit
-        iconGO.OnMouseExit = function(go)
-            if not go.windowGO.isDisplayed then 
-                -- /!\ go.windowGO represents the window last init in InitWindow(), which may represents the Tooltip and not the actual window to be toggled on click.
-                -- hence the importance to init the Tooltip before the actual window
-                rendererGO:Display(0.5)
-            end
-            onMouseExit(go)
-        end
-        
-        -- on left click pressed, scale down the icon
-        local scaleModifier = 0.8
-        iconGO.OnClick = function(go)
-            local scale = rendererGO.transform.localScale
-            rendererGO.transform.localScale = scale * scaleModifier
-        end
-        
-        local onLeftClickReleased = iconGO.OnLeftClickReleased -- set by GO.InitWindow()
-        iconGO.OnLeftClickReleased = function(go)
-            local scale = rendererGO.transform.localScale
-            rendererGO.transform.localScale = scale / scaleModifier
+        if not iconGO.isInit then
+            iconGO.isInit = true
             
-            if onLeftClickReleased ~= nil then
-                onLeftClickReleased()
-            end
-        end
-        
-        --[[
-        iconGO:Display(0.5)
-        
-        -- override OnMouseEnter/Exit set by GO.InitWindow()
-        local onMouseEnter = iconGO.OnMouseEnter
-        iconGO.OnMouseEnter = function(go)
-            go:Display(1)
-            onMouseEnter(go)
-        end
-        
-        local onMouseExit = iconGO.OnMouseExit
-        iconGO.OnMouseExit = function(go)
-            if not go.windowGO.isDisplayed then 
-                -- /!\ go.windowGO represents the window last init in InitWindow(), which may represents the Tooltip and not the actual window to be toggled on click.
-                -- hence the importance to init the Tooltip before the actual window
-                go:Display(0.5)
-            end
-            onMouseExit(go)
-        end
-        
-        -- on left click pressed, scale down the icon
-        local scaleModifier = 0.8
-        iconGO.OnClick = function(go)
-            local scale = go.transform.localScale
-            go.transform.localScale = scale * scaleModifier
-        end
-        
-        local onLeftClickReleased = iconGO.OnLeftClickReleased -- set by GO.InitWindow()
-        iconGO.OnLeftClickReleased = function(go)
-            local scale = go.transform.localScale
-            go.transform.localScale = scale / scaleModifier
+            local rendererGO = iconGO:GetChild("Renderer")
+            rendererGO:AddTag("ui")
             
-            if onLeftClickReleased ~= nil then
-                onLeftClickReleased()
+            local tooltipGO = iconGO:GetChild("Tooltip")
+            rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+            
+            rendererGO:Display(0.5)
+            
+            -- override OnMouseEnter/Exit set by GO.InitWindow()
+            local onMouseEnter = rendererGO.OnMouseEnter
+            rendererGO.OnMouseEnter = function(go)
+                rendererGO:Display(1)
+                onMouseEnter(go)
             end
-        end]]
-        
-        -- makes the tooltip BG and arrow slighly transparent
-        local tooltipGO = iconGO:GetChild("Tooltip")
-        if tooltipGO ~= nil then
-            local bg = tooltipGO:GetChild("Background", true)
-            bg.modelRenderer.opacity = 0.6
-            tooltipGO:GetChild("Arrow", true).textRenderer.opacity = 0.6
+            
+            local onMouseExit = rendererGO.OnMouseExit
+            rendererGO.OnMouseExit = function(go)
+                if not go.windows[1].isDisplayed then
+                    go:Display(0.5)
+                end
+                onMouseExit(go)
+            end
+            
+            -- on left click pressed, scale down the icon
+            local scaleModifier = 0.8
+            rendererGO.OnClick = function(go)
+                local scale = go.transform.localScale
+                go.transform.localScale = scale * scaleModifier
+            end
+            
+            local onLeftClickReleased = rendererGO.OnLeftClickReleased -- set by GO.InitWindow()
+            rendererGO.OnLeftClickReleased = function(go)
+                local scale = go.transform.localScale
+                go.transform.localScale = scale / scaleModifier
+                
+                if onLeftClickReleased ~= nil then
+                    onLeftClickReleased()
+                end
+            end
+
+            -- makes the tooltip BG and arrow slighly transparent
+            local tooltipGO = iconGO:GetChild("Tooltip")
+            if tooltipGO ~= nil then
+                local bg = tooltipGO:GetChild("Background", true)
+                bg.modelRenderer.opacity = 0.6
+                tooltipGO:GetChild("Arrow", true).textRenderer.opacity = 0.6
+            end
         end
     end
 end
 
 
 
-function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, animationFunction )
-    if tag ~= nil then
-        go:AddTag(tag)
-    end
-    
+function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, animationFunction, group )
     local windowGO = gameObjectNameOrAsset
     if type(gameObjectNameOrAsset) == "string" then
         windowGO = go:GetChild( gameObjectNameOrAsset ) or GameObject.Get( gameObjectNameOrAsset )
@@ -121,37 +73,74 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
         return
     end
     
-    go.windowGO = windowGO
+    --
+    go.windows = go.windows or {}
+    table.insert( go.windows, windowGO )
     windowGO.buttonGO = go
-    
+
     windowGO.transform.localPosition = Vector3(0)
-    windowGO:Display(false, true)
+    windowGO:Display(false)
     
-    if eventType == "mouseover" then
+    --
+    if tag ~= nil then
+        go:AddTag(tag)
+    end
+
+    --  
+    if group ~= nil then
+        windowGO:AddTag(group)
+        windowGO.OnDisplay = function( go )
+            if go.isDisplayed then
+                local gos = GameObject.GetWithTag( group )
+                for i, otherGO in pairs( gos ) do
+                    if otherGO ~= go and otherGO.isDisplayed then
+                        otherGO:Display(false)
+                    end
+                end
+            end
+        end
+    end
+
+    --
+    if eventType == "mousehover" then
         go.OnMouseEnter = function()
-            windowGO:Show()
+            windowGO:Display()
         end
         go.OnMouseExit = function()
-            windowGO:Hide()
+            windowGO:Display(false)
         end
         
     elseif eventType == "mouseclick" then
         go.OnLeftClickReleased = function()
             if animationFunction == nil then
-                windowGO:Display( not windowGO.isDisplayed, true )
+                if group ~= nil and not windowGO.isDisplayed then
+                    windowGO:Display()
+                else
+                    windowGO:Display( not windowGO.isDisplayed )
+                end
             else
                 animationFunction( windowGO )
             end
         end
     end
+end
 
-    windowGO.Show = function( go )
-        windowGO.transform.localPosition = Vector3(0)
+
+function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath )
+    local child = gameObjectNameOrInstanceOrScenePath
+    if type( child ) == "string" then
+        child = GameObject.Get( gameObjectNameOrInstanceOrScenePath )
+        if child == nil then
+            child = Scene.Append( gameObjectNameOrInstanceOrScenePath )
+        end
+        if child == nil then
+            print("warning")
+        end
     end
     
-    windowGO.Hide = function( go )
-        windowGO.transform.localPosition = Vector3(0,0,99)
-    end
+    child.parent = gameObject
+    child.transform:SetLocalPosition( Vector3:New(0,0,0) )
+    return child
 end
 
 
@@ -341,9 +330,7 @@ function GUI.Hud.SetPosition(hud, position)
         0
     )
     newPosition.z = hud.gameObject.transform:GetPosition().z
-    --print("Hud.SetPos", position, newPosition, hud.cameraGO.camera:GetPixelsToUnits(), hud.position)
     hud.gameObject.transform:SetPosition( newPosition )
-    --print(hud.gameObject.transform.position, hud.position)
 end
 
 
@@ -360,13 +347,13 @@ function GameObject.Display( gameObject, value, forceUseLocalScale )
 
     local renderer = gameObject.textRenderer or gameObject.modelRenderer or gameObject.mapRenderer
 
-    if valueType ~= "table" and not forceUseLocalScale and renderer ~= nil then
-        if not display and renderer.displayOpacity == nil then
-            renderer.displayOpacity = renderer:GetOpacity()
-        end
+    if valueType ~= "table" and forceUseLocalScale ~= true and renderer ~= nil then
         if display then
             value = value or renderer.displayOpacity or 1
         else
+            if renderer.displayOpacity == nil then
+                renderer.displayOpacity = renderer:GetOpacity()
+            end
             value = value or 0
         end
         renderer:SetOpacity( value )
@@ -381,116 +368,15 @@ function GameObject.Display( gameObject, value, forceUseLocalScale )
         end
         gameObject.transform:SetLocalPosition( value )
     end
-    --[[else
-        if not display and gameObject.transform.displayLocalScale == nil then
-            gameObject.transform.displayLocalScale = gameObject.transform:GetLocalScale()
-        end
-        if display then
-            value = value or gameObject.transform.displayLocalScale or Vector3:New(1)
-        else
-            value = value or Vector3:New(0.01)
-        end
-        gameObject.transform:SetLocalScale( value )
-    end]]
 
     gameObject.isDisplayed = display 
+    Daneel.Event.Fire( gameObject, "OnDisplay", gameObject )
 end
 
-
-local oDisplay = GameObject.Display
-function GameObject.Display( go, arg1, arg2 )
-    oDisplay( go, arg1, arg2 )
-    --print("display", go)
-    Daneel.Event.Fire( go, "OnDisplay", go )
-end
 
 function math.clamp( value, min, max )
     value = math.max( value, min )
     value = math.min( value, max )
     return value
 end
-
-
-------------------------------
--- keep uncommented to hide the backgrounds
-
-Background = {}
-Daneel.modules.Background = Background
-
-function Background.Start()
-
-    local gos = GameObject.GetWithTag("ui")
-    for i, go in pairs (gos ) do
-        local backgroundGO = go:GetChild("Background")
-        if backgroundGO ~= nil then
-            go.backgroundGO = backgroundGO
-            backgroundGO:Display(false)
-            
-            --[[local oOnMouseEnter = go.OnMouseEnter
-            go.OnMouseEnter = function()
-                backgroundGO:Display()
-                if oOnMouseEnter ~= nil then
-                    oOnMouseEnter()
-                end
-            end
-            
-            local oOnMouseExit = go.OnMouseExit
-            go.OnMouseExit = function()
-                if not go.isSelected then
-                    backgroundGO:Display(false)
-                end
-                if oOnMouseExit ~= nil then
-                    oOnMouseExit()
-                end
-            end]]
-        end
-    end
-end
-
-
-------------------------------
-
---[[
-function Vector2.ToPixel( vector, camera )
-    local vec = Vector2.New(
-        GUI.ToPixel( vector.x, "x", camera ),
-        GUI.ToPixel( vector.y, "y", camera )
-    )
-    --print("Vector2.ToPixel", vec)
-    return vec
-end
-
-function GUI.Hud.SetPosition(hud, position)
-    position = position:ToPixel( hud.cameraGO.camera )
-    local newPosition = hud.cameraGO.hudOriginGO.transform:GetPosition() +
-    Vector3:New(
-        position.x * hud.cameraGO.camera:GetPixelsToUnits(),
-        -position.y * hud.cameraGO.camera:GetPixelsToUnits(),
-        0
-    )
-    newPosition.z = hud.gameObject.transform:GetPosition().z
-    --print("Hud.SetPos", position, newPosition, hud.cameraGO.camera:GetPixelsToUnits(), hud.position)
-    hud.gameObject.transform:SetPosition( newPosition )
-    --print(hud.gameObject.transform.position, hud.position)
-end
-
-function GUI.Hud.GetPosition(hud)
-    local position = hud.gameObject.transform:GetPosition() - hud.cameraGO.hudOriginGO.transform:GetPosition()
-    position = position / hud.cameraGO.camera:GetPixelsToUnits()
-    --print("get pos", hud.gameObject.transform:GetPosition(), hud.cameraGO.hudOriginGO.transform:GetPosition(), hud.cameraGO.camera:GetPixelsToUnits(), position, math.round(position.x), math.round(-position.y))
-    return Vector2.New(math.round(position.x), math.round(-position.y))
-end
-
-local oSP = Transform.SetPosition
-function Transform.SetPosition( t, position )
-    --print( "transform st pos", position)
-    oSP( t, position )
-end
-
-local oGP = Transform.GetPosition
-function Transform.GetPosition( t )
-local pos = oGP( t )
-    --print( "transform GET pos", pos)
-return pos
-end]]
 

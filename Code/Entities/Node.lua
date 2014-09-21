@@ -76,6 +76,16 @@ function Behavior:Init( color )
     
     self.rendererGO = rendererGO
     
+    ----------
+    -- color Blind
+    
+    local numberGO = self.gameObject:GetChild("Color Blind")
+    if Options.colorBlindModeActive then
+        numberGO.textRenderer.text = table.getkey( ColorList, self.color )
+    else
+        numberGO:Destroy()
+    end
+    
     --
     -- max and required links
     

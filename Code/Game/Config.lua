@@ -20,15 +20,16 @@ Options = {
 
 AllowedConnectionsByColor= {
     Red = { "Red", "Orange", "Purple", "White" },
-    Yellow = { "Yellow", "Orange", "Green", "White" },
-    Blue = { "Blue", "Green", "Purple", "White" },
-    
     Orange = { "Orange", "Red", "Yellow", "White" },
+    Yellow = { "Yellow", "Orange", "Green", "White" },
     Green = { "Green", "Yellow", "Blue", "White" },
+    Blue = { "Blue", "Green", "Purple", "White" },
     Purple = { "Purple", "Red", "Blue", "White" },
     
-    White = { "White", "Yellow", "Orange", "Red",  "Purple", "Blue", "Green"  },
+    White = { "White", "Red", "Orange", "Yellow", "Green", "Blue", "Purple" },
 }
+
+ColorList = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" } -- used for color blind mode
 
 ---------
 

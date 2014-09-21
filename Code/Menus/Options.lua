@@ -42,10 +42,16 @@ function Behavior:Start()
     end
     self.colorBlindToggle = checkboxGO.toggle -- used in UpdateMenu()
     
+    
+    local infoIconGO = GameObject.Get("Color Blind Mode.Info Icon")
+    infoIconGO:InitWindow("Color Blind Mode.Info Window", "mouseclick")
+        
     --
     Daneel.Event.Listen("OptionsLoaded", function() self:UpdateMenu() end )    
     LoadOptions() -- fire "OptionsLoaded" event
     -- should be done as early as possible
+    
+    InitIcons()
 end
 
 
