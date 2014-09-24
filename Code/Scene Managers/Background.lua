@@ -1,15 +1,13 @@
 
- frontBackgroundModel = nil -- used in [Main Menu/Awake] to set the Window Mask model
- 
 function Behavior:Awake()
-    local camGO = GameObject.Get("Game Background")
-    self.gameObject.parent = camGO
+    self.gameObject.parent = GameObject.Get("Game Background")
     self.gameObject.transform.localPosition = Vector3(0,0,-50)
     
     self:ResizeBackground()
     Daneel.Event.Listen( "OnScreenResized", function() self:ResizeBackground() end )
     
     self.frontGO = self.gameObject:GetChild("Front")
+    self.frontGO:AddTag("front_background")
     self.backGO = self.gameObject:GetChild("Back")
     
     -- randomize the starting color
@@ -20,7 +18,6 @@ function Behavior:Awake()
     end
     
     self.frontGO.modelRenderer.model = "Nodes/"..AllowedConnectionsByColor.White[frontColorId]
-    frontBackgroundModel = self.frontGO.modelRenderer.model
     self.backGO.modelRenderer.model = "Nodes/"..AllowedConnectionsByColor.White[backColorId]
     
     self.nextColorId = backColorId + 1
@@ -32,7 +29,6 @@ function Behavior:Awake()
         loops = -1,
         OnLoopComplete = function(t)
             self.frontGO.modelRenderer.model = self.backGO.modelRenderer.model
-            frontBackgroundModel = self.frontGO.modelRenderer.model
             self.backGO.modelRenderer.model = "Nodes/"..AllowedConnectionsByColor.White[self.nextColorId]
 
             self.nextColorId = self.nextColorId + 1

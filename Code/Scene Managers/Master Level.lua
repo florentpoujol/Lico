@@ -4,6 +4,13 @@ function Behavior:Awake()
     local mask = bg:GetChild("Mask", true)
     --mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
     
+    ---------
+    local uiMaskGO = GameObject.Get("UI Mask")
+    uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
+    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
+    Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- fade the mask out
+
+    
     ----------
     -- Spawn level content
     
@@ -14,6 +21,7 @@ function Behavior:Awake()
     local nodes = content:GetChild("Nodes")
     nodes.parent = GameObject.Get("Nodes Parent")
     nodes.transform.localPosition = Vector3(0)
+    
     
     ----------
     -- Help/tutorial window
@@ -42,60 +50,46 @@ function Behavior:Awake()
 
     ----------
     -- Icons
-
-    local helpIconGO = GameObject.Get("Icons.Help")
-    helpIconGO:InitWindow("Tooltip", "mouseover", "ui")
     
-    --InitIcons() -- in [Helpers]
-    -- in this case, must be called after the Tooltip have been init.
+    local helpIconGO = GameObject.Get("Icons.Help.Renderer")
     
     if helpWindowGO ~= nil then
-        
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
-        InitIcons()
-        
-        helpIconGO:OnClick() -- display the help window
-        helpIconGO:OnLeftClickReleased()
-        
-        helpIconGO:OnMouseEnter() -- highlight the icon
-        helpIconGO:OnMouseExit() -- hide the Tooltip
-        
-        -- can't decide if simuling mouse envents like that is smart or ugly
+        helpIconGO:OnLeftClickReleased() -- display window
     else
-        helpIconGO:Destroy()
-        InitIcons()
+        helpIconGO.parent:Destroy()
+        helpIconGO = nil
+    end
+    
+    InitIcons() -- here to be called after InitWindow()
+    
+    if helpWindowGO ~= nil then
+        helpIconGO:Display(1) -- highlight the the help icon
     end
     
     --
-    local nextIconGO = GameObject.Get("Icons.Next Level")
-    
-    if helpWindowGO == nil then
-        nextIconGO.transform:Move(Vector3(-5,0,0))
-    end
-    InitIcons()
-    
-    nextIconGO.rendererGO:Display(false)
-    nextIconGO.transform:MoveLocal(Vector3(0,0,10))
-
-    
-    local oOnMouseEnter = nextIconGO.OnMouseEnter
-    nextIconGO.OnMouseEnter = function(go)
-        if Game.levelEnded then
-            oOnMouseEnter(go)
-        end
-    end
-    
-    local oOnMouseExit = nextIconGO.OnMouseExit
-    nextIconGO.OnMouseExit = function(go)
-        if Game.levelEnded then
-            oOnMouseExit(go)
-        end
-    end
-    
+    local nextIconGO = GameObject.Get("Icons.Next Level.Renderer")
     self.nextIconGO = nextIconGO
+    nextIconGO.transform:MoveLocal(Vector3(0,0,10)) -- hide the icon (and the tooltip) until the level ends
     
+    nextIconGO.OnLeftClickReleased = function(go)
+        uiMaskGO.s:Animate(1,0.5, function()
+            Scene.Load("Master Level")
+        end )
+    end
+              
+    if helpWindowGO == nil then
+        nextIconGO.parent.transform:Move(Vector3(-5,0,0))
+    end
     
-    
+    -- 
+    local menuIconGO = GameObject.Get("Icons.Main Menu.Renderer")
+    menuIconGO.OnLeftClickReleased = function(go)
+        uiMaskGO.s:Animate(1,0.5, function()
+            Scene.Load("Main Menu")
+        end )
+    end
+
     ----------
     -- End level
     
@@ -112,15 +106,11 @@ function Behavior:Awake()
     self:UpdateLevelCamera()
     Daneel.Event.Listen("RandomLevelGenerated", function() self:UpdateLevelCamera() end )
     
-    -- update the orthographic scale of the world camera so that the whole level but not more is visible
-    
+    local worldGO =  GameObject.Get("World Camera.World")
+    worldGO.transform.localEulerAngles = Vector3(-60,0,-45)
     
     --
     UpdateUISize()
-end
-
-function Behavior:Start()
-
 end
 
 
@@ -135,7 +125,7 @@ function Behavior:UpdateLevelCamera()
     end
 
     local scale = math.ceil(maxY + 1) * 2
-    GameObject.Get("World Camera").camera.orthographicScale = math.max( scale, 10 )
+    GameObject.Get("World Camera").camera.orthographicScale = scale--math.max( scale, 10 )
 
     if Game.levelToLoad.name == "Random" then
         GameObject.Get("World Camera").camera.orthographicScale = 20
@@ -154,7 +144,7 @@ function Behavior:Update()
 end
 
 
--- called when EndLevel event is Fired from [Node/CheckVictory]
+-- Called when EndLevel event is Fired from [Node/CheckVictory]
 function Behavior:EndLevel()
     Game.levelEnded = true
     
@@ -197,7 +187,7 @@ function Behavior:EndLevel()
         Game.levelToLoad = nextLevel
     end
     
-    self.nextIconGO.rendererGO:Display(true)
+    --self.nextIconGO.rendererGO:Display(true)
     self.nextIconGO:OnMouseEnter() -- makes the tooltip show so that the player nows what the new button is for
-    self.nextIconGO.transform:MoveLocal(Vector3(0,0,-10))
+    self.nextIconGO.parent.transform:MoveLocal(Vector3(0,0,-10))
 end

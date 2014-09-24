@@ -1,12 +1,10 @@
---[[PublicProperties
-color string "Red"
-/PublicProperties]]
 
 --local soundLinkBroken = CS.FindAsset("Link Broken", "Sound")
 
 function Behavior:Awake()
     self.gameObject.s = self
     self.gameObject:AddTag("link")
+    self.color = "Red"
     
     self.startGradient = self.gameObject:GetChild("Start Gradient")
     self.endGradient = self.gameObject:GetChild("End Gradient")
@@ -19,13 +17,9 @@ end
 function Behavior:SetColor( color, endColor )
     self.gameObject:RemoveTag(self.color)
     
-    self.gameObject.modelRenderer.model = "Links/"..color
-
     if Asset("Gradients/"..color) ~= nil and Asset("Gradients/"..endColor) ~= nil then
         self.startGradient.modelRenderer.model = "Gradients/"..color
         self.endGradient.modelRenderer.model = "Gradients/"..endColor
-        self.gameObject.modelRenderer.model = "Links/Crystal White"
-        self.gameObject.modelRenderer.opacity = 0
     end
     
     self.color = color

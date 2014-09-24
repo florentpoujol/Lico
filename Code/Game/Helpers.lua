@@ -19,29 +19,48 @@ function InitIcons()
             -- override OnMouseEnter/Exit set by GO.InitWindow()
             local onMouseEnter = rendererGO.OnMouseEnter
             rendererGO.OnMouseEnter = function(go)
-                rendererGO:Display(1)
+                rendererGO:Display(1)               
                 onMouseEnter(go)
             end
             
             local onMouseExit = rendererGO.OnMouseExit
             rendererGO.OnMouseExit = function(go)
-                if not go.windows[1].isDisplayed then
+                if go.windowGO == nil or not go.windowGO.isDisplayed then -- in this last case go.windowGO is the actual window that is displayed via mouseclick event (not the tooltip)
                     go:Display(0.5)
                 end
+                
+                if go.isScaleDown then
+                    -- icon has been clicked but the mouse exited it before the OnLeftClickReleased event
+                   go:scaleUp()
+                end
+                
                 onMouseExit(go)
             end
             
             -- on left click pressed, scale down the icon
             local scaleModifier = 0.8
-            rendererGO.OnClick = function(go)
+            rendererGO.isScaleDown = false
+            
+            function rendererGO.scaleUp(go)
+                local scale = go.transform.localScale
+                go.transform.localScale = scale / scaleModifier
+                go.isScaleDown = false
+            end
+            function rendererGO.scaleDown(go)
                 local scale = go.transform.localScale
                 go.transform.localScale = scale * scaleModifier
+                go.isScaleDown = true
+            end
+            
+            rendererGO.OnClick = function(go)
+                go:scaleDown()
             end
             
             local onLeftClickReleased = rendererGO.OnLeftClickReleased -- set by GO.InitWindow()
             rendererGO.OnLeftClickReleased = function(go)
-                local scale = go.transform.localScale
-                go.transform.localScale = scale / scaleModifier
+                if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then reenter the icon
+                    go:scaleUp()
+                end
                 
                 if onLeftClickReleased ~= nil then
                     onLeftClickReleased()
@@ -74,8 +93,6 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
     end
     
     --
-    go.windows = go.windows or {}
-    table.insert( go.windows, windowGO )
     windowGO.buttonGO = go
 
     windowGO.transform.localPosition = Vector3(0)
@@ -111,6 +128,8 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
         end
         
     elseif eventType == "mouseclick" then
+        go.windowGO = windowGO
+        
         go.OnLeftClickReleased = function()
             if animationFunction == nil then
                 if group ~= nil and not windowGO.isDisplayed then

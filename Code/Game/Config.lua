@@ -34,20 +34,20 @@ ColorList = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" } -- used for
 ---------
 
 local blockId = 0
-BlockIds = {
-    Square = {
-        White = blockId,
-        Purple = blockId +1,
-        Green = blockId + 2,
-        Orange = blockId + 3,
-        Blue = blockId + 4,
-        Yellow = blockId + 5,
-        Red = blockId + 6,
-   },
+BlockIds = {}
+
+BlockIds.Square = {
+    White = blockId,
+    Purple = blockId +1,
+    Green = blockId + 2,
+    Orange = blockId + 3,
+    Blue = blockId + 4,
+    Yellow = blockId + 5,
+    Red = blockId + 6,
 }
 
 blockId = blockId + 16
-BlockIds.Triangle = {
+BlockIds.Hexagon = {
     White = blockId,
     Purple = blockId +1,
     Green = blockId + 2,
@@ -56,20 +56,6 @@ BlockIds.Triangle = {
     Yellow = blockId + 5,
     Red = blockId + 6,
 }
-
---blockId = blockId + 16
-blockId = 0
-BlockIds.Circle = {
-    White = blockId,
-    Purple = blockId +1,
-    Green = blockId + 2,
-    Orange = blockId + 3,
-    Blue = blockId + 4,
-    Yellow = blockId + 5,
-    Red = blockId + 6,
-}
-
-
 
 
 Scenes = {

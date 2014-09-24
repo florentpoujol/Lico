@@ -3,22 +3,25 @@ function Behavior:Awake()
     Scene.Append("Background")
     
     ----------
+    local uiMaskGO = GameObject.Get("UI Mask")
+    uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
+    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
+    Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- fade the mask out
+    
+    ----------
     -- Icons / Windows
     
-    self.windowMaskGO = GameObject.Get("Window Mask")
-    Game.updateWindowMask = function() self:UpdateWindowMask() end
-    Daneel.Event.Listen("OnScreenResized", Game.updateWindowMask)
+    local uiMaskGO = GameObject.Get("UI Mask")
     
     local windowAnimation = function( windowGO )
         if not windowGO.isDisplayed then
-            self.windowMaskGO.modelRenderer.model = frontBackgroundModel -- frontBackgroundModel is set in [Background/Awake]
-            self.windowMaskGO:Animate("opacity", 1, 0.5, function()
+            uiMaskGO.s:Animate( 1, 0.5, function()
                 windowGO:Display()
-                self.windowMaskGO:Animate("opacity", 0, 0.5)
+                uiMaskGO.s:Animate(0, 0.5)
             end )
         end
     end
-
+    
     -- credit window   
     local creditsGO = GameObject.Get("Icons.Credits.Renderer")
     creditsGO:InitWindow("Windows.Credits", "mouseclick", nil, windowAnimation, "main_menu_window")
@@ -62,13 +65,6 @@ function Behavior:Awake()
     end )
 end
 
-
--- Called when OnScreenResized event is fired
--- Can be called via Game.updateWindowMask() (but not used as of 19/09/14)
-function Behavior:UpdateWindowMask()
-    local orthoScale = GameObject.Get("UI Camera").camera.orthographicScale
-    self.windowMaskGO.transform.localScale = Vector3( orthoScale * CS.Screen.aspectRatio, orthoScale, 0.1 )
-end
 
 
 function Behavior:Start()

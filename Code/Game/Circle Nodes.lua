@@ -2,8 +2,10 @@
 radius number 5
 startAngle number 0
 /PublicProperties]]
+
+-- put the nodes in a perfect circle
+
 function Behavior:Awake()
-    -- put the fnodes in a perfect circle
     local nodes = self.gameObject.children
     
     -- equation of a circle

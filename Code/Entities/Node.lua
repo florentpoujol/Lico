@@ -4,19 +4,16 @@ maxLinkCount number 0
 requiredLinkCount number 0
 /PublicProperties]]
 
---local soundLinkSuccess = CS.FindAsset("Link Success", "Sound")
---local soundNoAction = CS.FindAsset("No Action", "Sound")
-
 function Behavior:Awake()
     -- if the game object only has a modelRenderer, it is a placeholder to be replaced by the real node
-    self.overlayGO = self.gameObject:GetChild("Overlay")
-    if self.overlayGO == nil then
+    local rendererGO = self.gameObject:GetChild("Renderer")
+    if rendererGO == nil then
         local realNode = Scene.Append("Entities/Node", self.gameObject.parent)
         realNode.transform.localPosition = self.gameObject.transform.localPosition
         
         self.maxLinkCount = math.max( self.maxLinkCount, self.requiredLinkCount )
         if self.maxLinkCount == 0 then
-            self.maxLinkCount = 6
+            self.maxLinkCount = 4
         end
         realNode.s.maxLinkCount = self.maxLinkCount
         realNode.s.requiredLinkCount = self.requiredLinkCount
@@ -32,12 +29,17 @@ function Behavior:Awake()
         return
     end
     
+    ----------
 
     self.gameObject.s = self
     self.gameObject:AddTag("node")
     self.childrenByName = self.gameObject.childrenByName
 
-    self:Select(false) -- set self.isSelected
+    self.isSelected = false
+    self.overlayGO = self.gameObject:GetChild("Overlay")
+    self.overlayGO.displayScale = self.overlayGO.transform.localScale
+    self.overlayGO.transform.localScale = Vector3(1,1,0.1)
+
     
     self.nodeGOs = {} -- nodes this node is connected to -- filled in Link()
     self.linkGOs = {}
@@ -52,19 +54,13 @@ function Behavior:Init( color )
     self.gameObject:AddTag(color)
     self.color = color
     
-    self.shape = "Circle"
-    --[[if self.maxLinkCount > 0 then
-        if self.maxLinkCount == 3 then
-            self.shape = "Triangle"
-        elseif self.maxLinkCount == 4 then
-            self.shape = "Square"
-        end
-    end]]
+    self.shape = "Square"
     
     local rendererGO = self.gameObject:GetChild("Renderer")
     rendererGO.mapRenderer:LoadNewMap( function(map)
         map:SetBlockAt(0,0,0, BlockIds[ self.shape ][ color ])
     end)
+
     
     rendererGO:AddTag("node_renderer")
     rendererGO.OnClick = function() self:OnClick() end
@@ -86,94 +82,31 @@ function Behavior:Init( color )
         numberGO:Destroy()
     end
     
-    --
-    -- max and required links
+    ----------
+    -- link marks
     
+    local linkmarksGO = self.gameObject:GetChild("Link Marks")
+    for i=1, self.maxLinkCount do
+        local linkMark = linkmarksGO:Append( "Entities/Link Mark" )
+        local rendererGO = linkMark:GetChild("Renderer")
+        linkMark.transform.localScale = Vector3(0.15)
+        
+        linkMark.transform:MoveLocal(Vector3(0,0, i*0.4))
+    end
     
-    --
-    --[[
-    self.overlayGO = self.gameObject:GetChild("Overlay")
-    self.overlayGO.mapRenderer:LoadNewMap( function(map)
-        map:SetBlockAt(0,0,0, BlockIds[ self.shape ].White)
-    end)
-    ]]
+    ----------
+    -- overlay
     
-    --[[self.overlayGO.mapRenderer.map = nil
-    self.overlayGO:Set({ modelRenderer = { model = "Big Overlay"} })
-    self.overlayGO.transform.eulerAngles = Vector3(0)
-    self.overlayGO.transform.localScale = Vector3(0.012, 0.012, 1)
-    ]]
-    
-    --
-    self:InitLinkMarks()
+    local rendererGO = self.overlayGO:GetChild("Renderer")
+    rendererGO.mapRenderer:LoadNewMap( function(map)
+        map:SetBlockAt(0,0,0, BlockIds[ self.shape ][ color ])
+    end )
 end
 
--- called from Init()
-function Behavior:InitLinkMarks()
+function Behavior:Start()
+    --print(self.color, self.gameObject.transform.localPosition)
+    self.gameObject.transform.localScale = Vector3(0.75)
     
-    self.linkMarksGO = self.gameObject:GetChild("Link Marks") -- used below and in Update()
-
-    local maxLinkCount = self.maxLinkCount
-    local requiredLinkCount = self.requiredLinkCount
-    --if self.requiredLinkCount > 0 then
-        --linkCount = self.requiredLinkCount
-    --end
-    
-    -- default linkCount is 6 (default self.maxLinkCount)
-    local angleOffset = 360/maxLinkCount
-    local angle = 0
-    self.linkMarkGOs = {} -- use in UpdateLinkMarks()
-    
-    for i=1, maxLinkCount do
-        angle = angle + angleOffset
-        local x, y = GetPositionOnCircle( 0.6, angle )
-        
-        local modelPath = "Cubes/White"
-        if requiredLinkCount > 0 then
-            modelPath = "Cubes/Black"
-            requiredLinkCount = requiredLinkCount - 1
-        end
-        
-        local linkMark = GameObject.New("Link Mark", {
-            parent = self.linkMarksGO,
-            modelRenderer = { 
-                model = modelPath,
-                opacity = 0.8
-            },
-            transform = {
-                localPosition = Vector3( x, y, 0 ),
-                localScale = Vector3( 0.5, 0.5, 0.1 )
-            }
-        } )
-        
-        linkMark.transform:LookAt( self.linkMarksGO.transform.position )
-        table.insert( self.linkMarkGOs, linkMark )
-    end
-    
-    self.linkMarksGO.transform:RotateLocalEulerAngles(Vector3(0,0,math.random(0,359)))
-    
-
-    --[[local linkGO = Scene.Append("Entities/Links")
-    linkGO.parent = self.gameobject
-    
-    if self.maxLinkCount > 0 then
-        --linkGO.transform.localScale = 1
-        
-        local children = linkGO.childrenByName
-
-        for i=self.requiredLinkCount+1, 5 do
-            children[tostring(i)].modelRenderer.opacity = 0
-        end
-
-        if self.requiredLinkCount % 2 == 0 then
-            linkGO.transform.localPosition = Vector3(0,-0.085,0)
-        end
-    
-    elseif linkGO ~= nil then
-        linkGO:Destroy()
-    end
-    
-    self.linkMarkGOs = linkGO.children]]
 end
 
 --------------------------------------
@@ -229,13 +162,19 @@ function Behavior:Select( select )
         -- true if false (select if not already selected)
     end
     
+    local animationLength = 0.1
+    
     if select then
         -- prevent the node to be selected if it has no more link to make
         if self.maxLinkCount > 0 and #self.nodeGOs >= self.maxLinkCount then
             return
         end
         
-        self.overlayGO:Display()     
+        if self.overlayGO.animTweener ~= nil then
+            self.overlayGO.animTweener:Destroy()
+        end
+        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", self.overlayGO.displayScale, animationLength)
+        --self.overlayGO.transform.localScale = self.overlayGO.displayScale
         self.isSelected = true
         
         local selectedNode = GameObject.GetWithTag("selected_node")[1]
@@ -244,7 +183,11 @@ function Behavior:Select( select )
         end
         self.gameObject:AddTag("selected_node")
     else
-        self.overlayGO:Display(false)
+        --self.overlayGO.transform.localScale = Vector3(1)
+        if self.overlayGO.animTweener ~= nil then
+            self.overlayGO.animTweener:Destroy()
+        end
+        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", Vector3(1,1,0.1), animationLength)
         
         self.isSelected = false
         self.gameObject:RemoveTag("selected_node")
@@ -340,8 +283,57 @@ function Behavior:CanLink( targetGO )
     return false
 end
 
-local linkPositionOffset = 0.7
+local linkPositionOffset = 0.5
 
+function Behavior:Link( targetGO )
+    local linkGO = Scene.Append("Entities/Link2")
+    linkGO.parent = "Links Parent"
+    linkGO.transform.localEulerAngles = Vector3(0)
+    
+    local selfPosition = self.gameObject.transform.position
+    local otherPosition = targetGO.transform.position
+    
+    local middlePosition = (selfPosition + otherPosition) / 2
+    linkGO.transform.position = middlePosition
+    --print(selfPosition, middlePosition, otherPosition)
+    
+    local direction = otherPosition - selfPosition
+    local linkLength = direction:Length() - 1.5 -- -1 = - 0.5 * 2 = the length of the actual gap between the nodes renderer
+    
+    ----------
+    -- rotate link if it is vertical
+    selfLocalPos = self.gameObject.transform.localPosition
+    otherLocalPos = targetGO.transform.localPosition
+    
+    if self.gameObject.transform.localPosition.x == targetGO.transform.localPosition.x then
+        linkGO.transform.localEulerAngles = Vector3(0,0,-90)
+    end
+    
+    linkGO.transform.localScale = Vector3(1.5,1.5,1)
+
+    linkGO.s:SetColor( self.color, targetGO.s.color )
+    
+    --
+    linkGO.s.nodeGOs = { self.gameObject, targetGO }
+    linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
+    
+    table.insert( self.nodeGOs, targetGO )
+    table.insert( targetGO.s.nodeGOs, self.gameObject )
+    
+    table.insert( self.linkGOs, linkGO )
+    table.insert( targetGO.s.linkGOs, linkGO )
+    
+    --
+    --self:UpdateLinkMarks()
+    --targetGO.s:UpdateLinkMarks()
+    
+    if not Game.randomLevelGenerationInProgress then
+        --soundLinkSuccess:Play()
+    end
+    
+    --self:CheckVictory()
+end
+--[[
 function Behavior:Link( targetGO )
     local linkGO = Scene.Append("Entities/Link")
     linkGO.parent = self.gameObject
@@ -409,23 +401,21 @@ function Behavior:Link( targetGO )
     end
     
     self:CheckVictory()
-end
+end]]
 
 -- Called from Link() above and [Link/OnClick()]
 function Behavior:UpdateLinkMarks()
-    --if self.requiredLinkCount > 0 then
-        for i=1, #self.linkMarkGOs do
-            if i <= #self.linkGOs then
-                self.linkMarkGOs[i].modelRenderer.opacity = 0
-            else
-                self.linkMarkGOs[i].modelRenderer.opacity = 0.8
-            end
+    for i=1, #self.linkMarkGOs do
+        if i <= #self.linkGOs then
+            self.linkMarkGOs[i].modelRenderer.opacity = 0
+        else
+            self.linkMarkGOs[i].modelRenderer.opacity = 0.8
         end
-        
-        if #self.nodeGOs >= self.maxLinkCount or #self.nodeGOs >= self.requiredLinkCount then
-            self:Select(false)
-        end
-    --end
+    end
+    
+    if #self.nodeGOs >= self.maxLinkCount or #self.nodeGOs >= self.requiredLinkCount then
+        self:Select(false)
+    end
 end
 
 
@@ -508,28 +498,13 @@ function Behavior:CheckVictory()
 end
 
 
--- Highlight the node y scaling up and down the overlay.
--- used to highlight nodes with less links than required
---[[function Behavior:Highlight( highlight )
-    if highlight == nil then
-        highlight = true
-    end
-    
-    if highlight then
-        
-    else
-        
-    end
-end]]
-
-
 local linkMarksRotation = Vector3(0,0,0.7)
 local linkMarksFadeOutFrames = 60 -- 1 sec
 
 function Behavior:Update()
     -- rotate link marks when selected
     if self.isSelected then
-        self.linkMarksGO.transform:RotateLocalEulerAngles( linkMarksRotation )
+        --self.linkMarksGO.transform:RotateLocalEulerAngles( linkMarksRotation )
     end
     
     -- unselect selected node when click outside a node

@@ -14,17 +14,24 @@ function Behavior:SetData( level )
     levelNameGO.textRenderer.text = level.name
     levelNameGO.levelName = level.name
     
-    levelNameGO:AddTag("ui")
-    levelNameGO.OnMouseEnter = function(go)
-        go.textRenderer.text = "          Play          "
+    local bg = children.Background
+    bg:AddTag("ui")
+    bg.OnMouseEnter = function(go)
+        levelNameGO.textRenderer.text = "          Play          "
     end
-    levelNameGO.OnMouseExit = function(go)
-        go.textRenderer.text = go.levelName
+    bg.OnMouseExit = function(go)
+        levelNameGO.textRenderer.text = levelNameGO.levelName
     end
     
-    levelNameGO.OnClick = function(go)
-        Game.levelToLoad = level
-        Scene.Load("Master Level")
+    bg.OnLeftClickReleased = function(go)
+        local transitionAnimation = function()
+            local uiMaskGO = GameObject.Get("UI Mask")
+            uiMaskGO.s:Animate( 1, 0.5, function()
+                Game.levelToLoad = level
+                Scene.Load("Master Level")
+            end )
+        end
+        transitionAnimation()
     end
     
     if not level.isCompleted then
