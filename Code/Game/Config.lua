@@ -29,7 +29,7 @@ AllowedConnectionsByColor= {
     White = { "White", "Red", "Orange", "Yellow", "Green", "Blue", "Purple" },
 }
 
-ColorList = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" } -- used for color blind mode
+ColorList = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" } -- used for color blind mode and background
 
 ---------
 

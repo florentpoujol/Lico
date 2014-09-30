@@ -11,17 +11,17 @@ function Behavior:Awake()
     self.backGO = self.gameObject:GetChild("Back")
     
     -- randomize the starting color
-    local backColorId = math.random( 1, #AllowedConnectionsByColor.White )
+    local backColorId = math.random( 1, #ColorList )
     local frontColorId = backColorId - 1
     if frontColorId == 0 then
-        frontColorId = #AllowedConnectionsByColor.White
+        frontColorId = #ColorList
     end
     
-    self.frontGO.modelRenderer.model = "Nodes/"..AllowedConnectionsByColor.White[frontColorId]
-    self.backGO.modelRenderer.model = "Nodes/"..AllowedConnectionsByColor.White[backColorId]
+    self.frontGO.modelRenderer.model = "Nodes/"..ColorList[frontColorId]
+    self.backGO.modelRenderer.model = "Nodes/"..ColorList[backColorId]
     
     self.nextColorId = backColorId + 1
-    if self.nextColorId > #AllowedConnectionsByColor.White then
+    if self.nextColorId > #ColorList then
         self.nextColorId = 1
     end
     
@@ -29,10 +29,10 @@ function Behavior:Awake()
         loops = -1,
         OnLoopComplete = function(t)
             self.frontGO.modelRenderer.model = self.backGO.modelRenderer.model
-            self.backGO.modelRenderer.model = "Nodes/"..AllowedConnectionsByColor.White[self.nextColorId]
+            self.backGO.modelRenderer.model = "Nodes/"..ColorList[self.nextColorId]
 
             self.nextColorId = self.nextColorId + 1
-            if self.nextColorId > #AllowedConnectionsByColor.White then
+            if self.nextColorId > #ColorList then
                 self.nextColorId = 1
             end
         end,

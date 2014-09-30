@@ -3,6 +3,20 @@ color string ""
 maxLinkCount number 0
 requiredLinkCount number 0
 /PublicProperties]]
+--[[
+goal : check if a node can connect to another
+- check color
+
+find nodes the node can link to using rays in the 4 (or 8 in case of octogon) directions
+results must be updated when the node is turned 45°
+in all case nodes can connect only if they the ray intersects and they have the same rotation (or are octogon)
+each node has a reference to the nodes it can link to
+once a node has 4 references, remove it from
+
+CanLink function must also check if there isn't a link in between
+
+]]
+
 
 function Behavior:Awake()
     -- if the game object only has a modelRenderer, it is a placeholder to be replaced by the real node
@@ -35,12 +49,9 @@ function Behavior:Awake()
     self.gameObject:AddTag("node")
     self.childrenByName = self.gameObject.childrenByName
 
-    self.isSelected = false
-    self.overlayGO = self.gameObject:GetChild("Overlay")
-    self.overlayGO.displayScale = self.overlayGO.transform.localScale
-    self.overlayGO.transform.localScale = Vector3(1,1,0.1)
+    self.isSelected = false  
 
-    
+    self.linkableNodes = {}
     self.nodeGOs = {} -- nodes this node is connected to -- filled in Link()
     self.linkGOs = {}
     
@@ -57,10 +68,7 @@ function Behavior:Init( color )
     self.shape = "Square"
     
     local rendererGO = self.gameObject:GetChild("Renderer")
-    rendererGO.mapRenderer:LoadNewMap( function(map)
-        map:SetBlockAt(0,0,0, BlockIds[ self.shape ][ color ])
-    end)
-
+    rendererGO.modelRenderer.model = "Flat Nodes/"..color
     
     rendererGO:AddTag("node_renderer")
     rendererGO.OnClick = function() self:OnClick() end
@@ -85,28 +93,102 @@ function Behavior:Init( color )
     ----------
     -- link marks
     
-    local linkmarksGO = self.gameObject:GetChild("Link Marks")
+    local linkmarksGO = self.gameObject:GetChild("Links Queue")
+    self.linkQueue = linkmarksGO
+    local linkMarksAnimOffset = 0.2
+    local op = { 0.8, 0.6, 0.4, 0.2 }
+    local op = { 0.15, 0.3, 0.45, 0.6 }
     for i=1, self.maxLinkCount do
-        local linkMark = linkmarksGO:Append( "Entities/Link Mark" )
-        local rendererGO = linkMark:GetChild("Renderer")
-        linkMark.transform.localScale = Vector3(0.15)
+        --[[local linkMark = linkmarksGO:Append( "Entities/Flat Link Mark" )
+        linkMark.transform:MoveLocal(Vector3(0,-i*0.1,0))
+        linkMark.modelRenderer.model = "Flat Nodes/"..color
+        --linkMark.modelRenderer.opacity = 0.6
         
-        linkMark.transform:MoveLocal(Vector3(0,0, i*0.4))
+        local mask = linkMark:GetChild("Mask")
+        mask.modelRenderer.opacity = op[i]
+        ]]
     end
+    --linkmarksGO.transform:MoveLocal(Vector3(0,-0.5,0))
+--    linkmarksGO.transform.localScale = ""
     
     ----------
     -- overlay
     
+    self.overlayGO = self.gameObject:GetChild("Overlay")
+    self.overlayGO.displayScale = self.overlayGO.transform.localScale
+    self.overlayGO.transform.localScale = Vector3(1)
+    
     local rendererGO = self.overlayGO:GetChild("Renderer")
-    rendererGO.mapRenderer:LoadNewMap( function(map)
-        map:SetBlockAt(0,0,0, BlockIds[ self.shape ][ color ])
-    end )
+    rendererGO.modelRenderer.model = "Flat Nodes/"..color
 end
 
+
+--------------------------------------
+
 function Behavior:Start()
-    --print(self.color, self.gameObject.transform.localPosition)
-    self.gameObject.transform.localScale = Vector3(0.75)
+    if not self.gameObject.isDestroyed then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
+        
+        -- by now all nodes of the level have been Init
+        self:GetLinkableNodes()
+    end
+end
+
+function Behavior:GetLinkableNodes()
+    if #self.linkableNodes >= 4 then --TODO check if node is octogon
+        -- save a little performance by ending the function now if it doesn't need to run
+        return
+    end
     
+    local nodeRndrs = GameObject.GetWithTag("node_renderer")
+    table.removevalue( nodeRndrs, self.rendererGO )   
+    
+    local nodePosition = self.gameObject.transform.position
+    local directionGOs = self.gameObject:GetChild("Ray Directions").children
+    local directions = {}
+    for i, go in pairs(directionGOs) do
+        table.insert( directions, go.transform.position - nodePosition )
+    end
+
+    
+    --[[
+    local oherDirections = {
+        Vector3(1,0,1),
+        Vector3(1,0,-1),
+        Vector3(-1,0,1),
+        Vector3(-1,0,-1),
+    }
+    
+    if node is turned 45° then
+        directions = oherDirections
+    end
+    
+    if node is octogon then
+        table.mergein( directions, otherDirections )
+    end
+    ]]
+    
+    local ray = Ray( self.gameObject.transform.position, Vector3(0) )
+    for i, direction in pairs(directions) do
+        ray.direction = direction
+        
+        local raycastHit = ray:Cast( nodeRndrs, true )[1] -- true = sort by distance
+        -- TODO for efficiency :
+        -- get only the nodes actually in the direction and compute the distance via their coordinate (closest = smallest relative coords)
+        
+        if raycastHit ~= nil then
+            local otherNode = raycastHit.gameObject.parent
+            
+            -- TODO : check orientation of other node's renderer
+            if not table.containsvalue( self.linkableNodes, otherNode ) then
+                table.insert( self.linkableNodes, otherNode ) -- raycatHit.gameObject is the rendererGO
+            end
+            if not table.containsvalue( otherNode.s.linkableNodes, self.gameObject ) then
+                table.insert( otherNode.s.linkableNodes, self.gameObject )
+            end
+        end
+        
+    end
+
 end
 
 --------------------------------------
@@ -162,7 +244,7 @@ function Behavior:Select( select )
         -- true if false (select if not already selected)
     end
     
-    local animationLength = 0.1
+    local animationTime = 0.1
     
     if select then
         -- prevent the node to be selected if it has no more link to make
@@ -173,8 +255,8 @@ function Behavior:Select( select )
         if self.overlayGO.animTweener ~= nil then
             self.overlayGO.animTweener:Destroy()
         end
-        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", self.overlayGO.displayScale, animationLength)
-        --self.overlayGO.transform.localScale = self.overlayGO.displayScale
+        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", self.overlayGO.displayScale, animationTime)
+
         self.isSelected = true
         
         local selectedNode = GameObject.GetWithTag("selected_node")[1]
@@ -183,12 +265,11 @@ function Behavior:Select( select )
         end
         self.gameObject:AddTag("selected_node")
     else
-        --self.overlayGO.transform.localScale = Vector3(1)
         if self.overlayGO.animTweener ~= nil then
             self.overlayGO.animTweener:Destroy()
         end
-        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", Vector3(1,1,0.1), animationLength)
-        
+        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", Vector3(1), animationTime)
+
         self.isSelected = false
         self.gameObject:RemoveTag("selected_node")
     end
@@ -197,6 +278,7 @@ end
 
 -- Check there isn't a link or other node in between
 function Behavior:CanLink( targetGO )  
+do return true end
     -- check that the intersection point between the (potential) link line and al other links
     local selfPosition = self.gameObject.transform.position
     local otherPosition = targetGO.transform.position 
@@ -285,8 +367,9 @@ end
 
 local linkPositionOffset = 0.5
 
+
 function Behavior:Link( targetGO )
-    local linkGO = Scene.Append("Entities/Link2")
+    local linkGO = Scene.Append("Entities/Link")
     linkGO.parent = "Links Parent"
     linkGO.transform.localEulerAngles = Vector3(0)
     
@@ -302,14 +385,14 @@ function Behavior:Link( targetGO )
     
     ----------
     -- rotate link if it is vertical
-    selfLocalPos = self.gameObject.transform.localPosition
-    otherLocalPos = targetGO.transform.localPosition
+    local selfLocalPos = self.gameObject.transform.localPosition
+    local otherLocalPos = targetGO.transform.localPosition
     
     if self.gameObject.transform.localPosition.x == targetGO.transform.localPosition.x then
-        linkGO.transform.localEulerAngles = Vector3(0,0,-90)
+        linkGO.transform.localEulerAngles = Vector3(0,90,0)
     end
     
-    linkGO.transform.localScale = Vector3(1.5,1.5,1)
+    linkGO.transform.localScale = Vector3(0.8,1,0.8)
 
     linkGO.s:SetColor( self.color, targetGO.s.color )
     
@@ -333,75 +416,6 @@ function Behavior:Link( targetGO )
     
     --self:CheckVictory()
 end
---[[
-function Behavior:Link( targetGO )
-    local linkGO = Scene.Append("Entities/Link")
-    linkGO.parent = self.gameObject
-    linkGO.transform.localPosition = Vector3(0,0,0)
-    linkGO.parent = "Links Parent"
-    
-    local selfPosition = self.gameObject.transform.position
-    local otherPosition = targetGO.transform.position 
-    local direction = otherPosition - selfPosition
-    local linkLength = direction:Length()
-    
-    
-    linkGO.transform:Move( direction:Normalized() * linkPositionOffset )
-    
-    linkGO.transform:LookAt( otherPosition )
-    local angles = linkGO.transform.localEulerAngles
-    local y = math.round( angles.y )
-    
-    -- x direction
-    -- -90 = totally bottom
-    -- <0  toward bottom
-    -- 0 = totally flat
-    -- >0 toward up
-    -- 90 = totally up   
-    
-    -- y  direction
-    -- 0 vertical
-    -- -90 toward right
-    -- 90 toward left
-    
-    
-    if y == 0 then
-        -- totally upward link
-        if angles.x < 0 then -- toward bottom
-            angles.z = 270 
-        elseif angles.x > 0 then -- toward up
-            angles.z = 90
-        end
-        linkGO.transform.localEulerAngles = angles
-    elseif y == 90 then
-        angles.z = -180
-        linkGO.transform.localEulerAngles = angles
-    end
-    
-    linkGO.transform.localScale = Vector3(0.1,0.5, linkLength - linkPositionOffset*2 )
-
-    linkGO.s:SetColor( self.color, targetGO.s.color )
-    
-    --
-    linkGO.s.nodeGOs = { self.gameObject, targetGO }
-    linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
-    
-    table.insert( self.nodeGOs, targetGO )
-    table.insert( targetGO.s.nodeGOs, self.gameObject )
-    
-    table.insert( self.linkGOs, linkGO )
-    table.insert( targetGO.s.linkGOs, linkGO )
-    
-    --
-    self:UpdateLinkMarks()
-    targetGO.s:UpdateLinkMarks()
-    
-    if not Game.randomLevelGenerationInProgress then
-        --soundLinkSuccess:Play()
-    end
-    
-    self:CheckVictory()
-end]]
 
 -- Called from Link() above and [Link/OnClick()]
 function Behavior:UpdateLinkMarks()
@@ -498,15 +512,9 @@ function Behavior:CheckVictory()
 end
 
 
-local linkMarksRotation = Vector3(0,0,0.7)
 local linkMarksFadeOutFrames = 60 -- 1 sec
 
 function Behavior:Update()
-    -- rotate link marks when selected
-    if self.isSelected then
-        --self.linkMarksGO.transform:RotateLocalEulerAngles( linkMarksRotation )
-    end
-    
     -- unselect selected node when click outside a node
     if CS.Input.WasButtonJustPressed("LeftMouse") then
         local selectedNode = GameObject.GetWithTag("selected_node")[1]

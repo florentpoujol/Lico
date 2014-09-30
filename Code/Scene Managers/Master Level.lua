@@ -1,7 +1,7 @@
 
 function Behavior:Awake()
     local bg = Scene.Append("Background")
-    local mask = bg:GetChild("Mask", true)
+    --local mask = bg:GetChild("Mask", true)
     --mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
     
     ---------
@@ -21,6 +21,7 @@ function Behavior:Awake()
     local nodes = content:GetChild("Nodes")
     nodes.parent = GameObject.Get("Nodes Parent")
     nodes.transform.localPosition = Vector3(0)
+    nodes.transform.localEulerAngles = Vector3(0)
     
     
     ----------
@@ -106,8 +107,8 @@ function Behavior:Awake()
     self:UpdateLevelCamera()
     Daneel.Event.Listen("RandomLevelGenerated", function() self:UpdateLevelCamera() end )
     
-    local worldGO =  GameObject.Get("World Camera.World")
-    worldGO.transform.localEulerAngles = Vector3(-60,0,-45)
+    local worldGO =  GameObject.Get("World")
+    worldGO.modelRenderer:Destroy()
     
     --
     UpdateUISize()
@@ -116,16 +117,16 @@ end
 
 function Behavior:UpdateLevelCamera()
    local nodes = GameObject.GetWithTag("node")
-    local maxY = 0
-    for i, node in pairs(nodes) do
-        local y = math.abs( node.transform.position.y )
-        if y > maxY then
-            maxY = y
+    local maxValue = 0
+    for i, node in pairs(nodes) do       
+        local value = node.transform.position.y
+        if value > maxValue then
+            maxValue = value
         end
     end
 
-    local scale = math.ceil(maxY + 1) * 2
-    GameObject.Get("World Camera").camera.orthographicScale = scale--math.max( scale, 10 )
+    local scale = math.ceil(maxValue + 1) * 2
+    GameObject.Get("World Camera").camera.orthographicScale = math.max( scale, 5 ) -- min=10
 
     if Game.levelToLoad.name == "Random" then
         GameObject.Get("World Camera").camera.orthographicScale = 20

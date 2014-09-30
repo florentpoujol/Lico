@@ -39,6 +39,11 @@ Levels = {
         name = "Test",
         scenePath = "Levels/Test",     
     },
+    {
+        id = -3,
+        name = "Test2",
+        scenePath = "Levels/Test2",     
+    },
     
     {
         id = -2,

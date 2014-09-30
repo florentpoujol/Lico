@@ -51,7 +51,7 @@ function Behavior:BuildLevelGrid()
     for index, level in ipairs( Levels ) do
         if index >= self.firstLevelIndex then
         
-            local cartridgeGO = Scene.Append("Entities/Squared Level Cartridge")
+            local cartridgeGO = Scene.Append("Entities/Level Cartridge")
             cartridgeGO.parent = self.gridGO
             cartridgeGO.transform.localPosition = Vector3( self.cartridgeWidth * x, -self.cartridgeHeight * y, 0 )
             
