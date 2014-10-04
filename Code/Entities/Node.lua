@@ -43,11 +43,15 @@ function Behavior:Awake()
         return
     end
     
+
     ----------
 
     self.gameObject.s = self
     self.gameObject:AddTag("node")
-    self.childrenByName = self.gameObject.childrenByName
+    
+    Daneel.Event.Listen("EndLevel", self.gameObject) -- fired from CheckVictory(), cateched by EndLevel()
+    
+    self.linksParentGO = self.gameObject:GetChild("Links Parent")
 
     self.isSelected = false  
 
@@ -93,23 +97,18 @@ function Behavior:Init( color )
     ----------
     -- link marks
     
-    local linkmarksGO = self.gameObject:GetChild("Links Queue")
-    self.linkQueue = linkmarksGO
-    local linkMarksAnimOffset = 0.2
-    local op = { 0.8, 0.6, 0.4, 0.2 }
-    local op = { 0.15, 0.3, 0.45, 0.6 }
-    for i=1, self.maxLinkCount do
-        --[[local linkMark = linkmarksGO:Append( "Entities/Flat Link Mark" )
-        linkMark.transform:MoveLocal(Vector3(0,-i*0.1,0))
-        linkMark.modelRenderer.model = "Flat Nodes/"..color
-        --linkMark.modelRenderer.opacity = 0.6
-        
-        local mask = linkMark:GetChild("Mask")
-        mask.modelRenderer.opacity = op[i]
-        ]]
+    self.linksQueue = self.gameObject:GetChild("Links Queue")
+    local marks = self.linksQueue.children
+    self.linksQueue.marks = {}
+    
+    for i, go in ipairs( marks ) do
+        if i <= self.maxLinkCount then
+            go.transform.localScale = Vector3(0.064,0.1,0.1)
+            table.insert( self.linksQueue.marks, go )
+        else
+            go:Destroy()
+        end
     end
-    --linkmarksGO.transform:MoveLocal(Vector3(0,-0.5,0))
---    linkmarksGO.transform.localScale = ""
     
     ----------
     -- overlay
@@ -120,6 +119,14 @@ function Behavior:Init( color )
     
     local rendererGO = self.overlayGO:GetChild("Renderer")
     rendererGO.modelRenderer.model = "Flat Nodes/"..color
+    
+    -----------
+    -- pillar
+    
+    self.pillarGO = self.gameObject:GetChild("Pillar")
+    self.pillarGO.modelRenderer.model = "Nodes/"..color
+    self.pillarGO.transform:Move(Vector3(0,-5,0))
+    self.pillarGO.transform.localScale = Vector3(1,10,1)
 end
 
 
@@ -132,6 +139,7 @@ function Behavior:Start()
         self:GetLinkableNodes()
     end
 end
+
 
 function Behavior:GetLinkableNodes()
     if #self.linkableNodes >= 4 then --TODO check if node is octogon
@@ -242,6 +250,8 @@ function Behavior:Select( select )
         select = not self.isSelected
         -- false if true (un select if already selected)
         -- true if false (select if not already selected)
+    elseif select == self.isSelected then
+        return
     end
     
     local animationTime = 0.1
@@ -255,7 +265,10 @@ function Behavior:Select( select )
         if self.overlayGO.animTweener ~= nil then
             self.overlayGO.animTweener:Destroy()
         end
-        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", self.overlayGO.displayScale, animationTime)
+        --self.overlayGO.animTweener = self.overlayGO:Animate("localScale", self.overlayGO.displayScale, animationTime)
+        
+        --self.pillarGO.modelRenderer.opacity = 0.5
+        self.pillarGO:Animate("opacity", 0.5, 0.5)
 
         self.isSelected = true
         
@@ -268,8 +281,11 @@ function Behavior:Select( select )
         if self.overlayGO.animTweener ~= nil then
             self.overlayGO.animTweener:Destroy()
         end
-        self.overlayGO.animTweener = self.overlayGO:Animate("localScale", Vector3(1), animationTime)
-
+        --self.overlayGO.animTweener = self.overlayGO:Animate("localScale", Vector3(1), animationTime)
+        
+        --self.pillarGO.modelRenderer.opacity = 0.05
+        self.pillarGO:Animate("opacity", 0.05, 0.5)
+        
         self.isSelected = false
         self.gameObject:RemoveTag("selected_node")
     end
@@ -277,128 +293,60 @@ end
 
 
 -- Check there isn't a link or other node in between
-function Behavior:CanLink( targetGO )  
-do return true end
-    -- check that the intersection point between the (potential) link line and al other links
-    local selfPosition = self.gameObject.transform.position
-    local otherPosition = targetGO.transform.position 
-    
-    local x1 = selfPosition.x
-    local y1 = selfPosition.y
-    local point1 = Vector2(x1,y1)
-    
-    local x2 = otherPosition.x
-    local y2 = otherPosition.y
-    local point2 = Vector2(x2,y2)  
-    
-    local linkGOs = GameObject.GetWithTag( "link" )
-    for i, go in pairs(self.linkGOs) do
-        table.removevalue( linkGOs, go )
-    end
-    for i, go in pairs(targetGO.s.linkGOs) do
-        table.removevalue( linkGOs, go )
-    end
-    for i, linkGO in pairs( linkGOs ) do
-        local x3 = linkGO.s.nodePositions[1].x
-        local y3 = linkGO.s.nodePositions[1].y
-        local point3 = Vector2(x3,y3)
+function Behavior:CanLink( targetGO )   
+    if table.containsvalue( self.linkableNodes, targetGO ) then
+        -- both node can link f there isn't a link in between
         
-        local x4 = linkGO.s.nodePositions[2].x
-        local y4 = linkGO.s.nodePositions[2].y
-        local point4 = Vector2(x4,y4)
+        local nodeRndrGOs = GameObject.GetWithTag("link_hitbox") 
+        table.removevalue( nodeRndrGOs, self.rendererGO )
+        table.removevalue( nodeRndrGOs, targetGO.s.rendererGO )
         
-        -- formula for line-line intersection from: 
-        -- http://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
-        
-        -- first, check if the lines are parralell
-        local a = x1 - x2
-        local b = y1 - y2
-        local c = x3 - x4
-        local d = y3 - y4
-        local denominator = a * d - b * c
-        
-        if denominator ~= 0 then
-            local e = (x1 * y2 - y1 * x2)
-            local f = (x3 * y4 - y3 * x4)
-            
-            -- i for intersection
-            local xi = ( e*c - a*f ) / denominator
-            local yi = ( e*d - b*f ) / denominator
-            local pointi = Vector2(xi,yi)
-            
-            -- now check if the point is inside both segments which means the links actually intersects.
-            -- the point is inside a segment if the distance to the two points of the segment is no greater than the distance between the two points
-            
-            local link1SqrLength = (point1 - point2):GetSqrLength()
-            local point1SqrDistance = (point1 - pointi):GetSqrLength()
-            local point2SqrDistance = (point2 - pointi):GetSqrLength()
-            
-            local link2SqrLength = (point3 - point4):GetSqrLength()
-            local point3SqrDistance = (point3 - pointi):GetSqrLength()
-            local point4SqrDistance = (point4 - pointi):GetSqrLength()
-            
-            if 
-                point1SqrDistance <= link1SqrLength and point2SqrDistance <= link1SqrLength and
-                point3SqrDistance <= link2SqrLength and point4SqrDistance <= link2SqrLength
-            then
-                return false
-            end
+        if #nodeRndrGOs == 0 then
+            return true
         end
-    end
-    
-    -- check there isn't another node in between, too
-    local ray = Ray:New(otherPosition, (selfPosition - otherPosition):Normalized() )
-
-    local nodeGOs = GameObject.GetWithTag("node_renderer")
-    if self.rendererGO ~= nil then
-        table.removevalue( nodeGOs, self.rendererGO )
-    end
-    if targetGO.s.rendererGO ~= nil then
-        table.removevalue( nodeGOs, targetGO.s.rendererGO )
-    end
-    
-    local hit = ray:Cast( nodeGOs, true )[1]
-
-    if hit == nil or hit.distance^2 > (selfPosition - otherPosition):GetSqrLength() then
-        return true
+        
+        local selfPosition = self.gameObject.transform.position
+        local targetPosition = targetGO.transform.position
+        local direction = targetPosition - selfPosition
+        
+        local ray = Ray:New(selfPosition, direction:Normalized() )
+        local hit = ray:Cast( nodeRndrGOs, true )[1]
+        
+        if hit == nil or hit.distance > direction:GetLength() then -- note: direction:GetLength() always = 2
+            return true
+        end
     end
     return false
 end
 
-local linkPositionOffset = 0.5
-
 
 function Behavior:Link( targetGO )
-    local linkGO = Scene.Append("Entities/Link")
-    linkGO.parent = "Links Parent"
-    linkGO.transform.localEulerAngles = Vector3(0)
+    local linkGO = Scene.Append("Entities/Link")   
+    linkGO.parent = self.linksParentGO
+    linkGO.transform.localPosition = Vector3(0)
     
     local selfPosition = self.gameObject.transform.position
     local otherPosition = targetGO.transform.position
     
-    local middlePosition = (selfPosition + otherPosition) / 2
-    linkGO.transform.position = middlePosition
-    --print(selfPosition, middlePosition, otherPosition)
-    
     local direction = otherPosition - selfPosition
-    local linkLength = direction:Length() - 1.5 -- -1 = - 0.5 * 2 = the length of the actual gap between the nodes renderer
+    local linkLength = direction:GetLength() -- can be 2, not always = 2 ! (can be 2, 4
     
-    ----------
-    -- rotate link if it is vertical
-    local selfLocalPos = self.gameObject.transform.localPosition
-    local otherLocalPos = targetGO.transform.localPosition
+    linkGO.transform:LookAt(otherPosition)
+    linkGO.transform:MoveOriented(Vector3(0,0, -linkLength/2 ))
+    linkGO.transform:Move(Vector3(0, 0.03125, 0)) -- 0.03125 = 1/16/2 : half height of a flat node (whih is 1 texture pixel high)
     
-    if self.gameObject.transform.localPosition.x == targetGO.transform.localPosition.x then
-        linkGO.transform.localEulerAngles = Vector3(0,90,0)
-    end
+    linkGO.transform.localScale = Vector3(1,1, linkLength - 1 + 0.02 ) -- make it slighly longer than the gap between the nodes
     
-    linkGO.transform.localScale = Vector3(0.8,1,0.8)
-
-    linkGO.s:SetColor( self.color, targetGO.s.color )
+    -- make the link appear in the same plane as the nodes
+    local angles = linkGO.transform.localEulerAngles
+    angles.z = 0
+    linkGO.transform.localEulerAngles = angles
     
     --
+    linkGO.s:SetColor( self.color, targetGO.s.color )
+    
     linkGO.s.nodeGOs = { self.gameObject, targetGO }
-    linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
+    --linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
     
     table.insert( self.nodeGOs, targetGO )
     table.insert( targetGO.s.nodeGOs, self.gameObject )
@@ -407,43 +355,58 @@ function Behavior:Link( targetGO )
     table.insert( targetGO.s.linkGOs, linkGO )
     
     --
-    --self:UpdateLinkMarks()
-    --targetGO.s:UpdateLinkMarks()
+    self:UpdateLinkQueue()
+    targetGO.s:UpdateLinkQueue()
     
-    if not Game.randomLevelGenerationInProgress then
-        --soundLinkSuccess:Play()
-    end
-    
-    --self:CheckVictory()
+    self:CheckVictory()
 end
 
--- Called from Link() above and [Link/OnClick()]
-function Behavior:UpdateLinkMarks()
-    for i=1, #self.linkMarkGOs do
-        if i <= #self.linkGOs then
-            self.linkMarkGOs[i].modelRenderer.opacity = 0
+-- Called from Link() and [Link/OnClick()]
+function Behavior:UpdateLinkQueue( nodeLinkCount )
+    nodeLinkCount = nodeLinkCount or #self.nodeGOs
+    local marks = table.reverse( self.linksQueue.marks )
+    for i, go in ipairs( marks ) do
+        local scale = go.transform.localScale
+        
+        if i <= nodeLinkCount then
+            -- link mark must be hidden
+            if scale.y ~= 0 then
+                scale.y = 0
+                --go.transform.localScale = scale
+                go:Animate("localScale", scale, 0.5)
+            end
         else
-            self.linkMarkGOs[i].modelRenderer.opacity = 0.8
+            if scale.y == 0 then
+                scale.y = 0.1 -- depend on required or max link mark
+                --go.transform.localScale = scale
+                go:Animate("localScale", scale, 0.5)
+            end
         end
     end
     
-    if #self.nodeGOs >= self.maxLinkCount or #self.nodeGOs >= self.requiredLinkCount then
+    if nodeLinkCount >= self.maxLinkCount or (self.requiredLinkCount > 0 and nodeLinkCount >= self.requiredLinkCount) then
         self:Select(false)
     end
 end
 
-
-function Behavior:CheckAllNodesAreLinked()
-    local nodes = GameObject.GetWithTag( "node" )
+-- Called at the end of Link()
+function Behavior:CheckVictory()   
+    local nodes = GameObject.GetWithTag("node")
     
-    -- quick-search for nodes without links
     for i, node in pairs( nodes ) do
+        -- quick-search for nodes without links
         if #node.s.linkGOs == 0 then
             return false
         end
+        
+        -- check that all nodes have their required link count
+        if node.s.requiredLinkCount > 0 and #node.s.nodeGOs < node.s.requiredLinkCount then
+            return false            
+        end
     end
     
-    -- using simplified BFS (breadth-first search), check that all nodes are actually connected together
+    
+    -- check that all nodes are actually connected together, using simplified BFS (breadth-first search), 
     -- if all nodes are connected, the algo must find as many nodes as they are
     
     local visited = {}
@@ -467,48 +430,28 @@ function Behavior:CheckAllNodesAreLinked()
         node.willBeVisited = nil        
     end
     
-    if #visited == #nodes then
-        return true
+    if #visited ~= #nodes then
+        return false
     end
-    return false
+    
+    
+    -- By now all nodes are OK and linked together
+    Daneel.Event.Fire("EndLevel") -- catched by [Master Level/EndLevel] and all node's EndLevel()
 end
 
+-- Called on all nodes when EndLevel event is fired from one node's CheckVictory()
+function Behavior:EndLevel()
+    -- prevent nodes to be selected
+    self.rendererGO:RemoveTag("node_renderer")
+    
+    -- prevent links to be removed
+    for i, link in pairs( self.linkGOs ) do
+        link.s.hitboxGO:RemoveTag("link_hitbox")
+    end
+    
+    self:UpdateLinkQueue(4) -- do as if the node had 4 links, hidding all the link marks
 
-function Behavior:CheckVictory()
-    -- check that all nodes have all their link
-    local nodes = GameObject.GetWithTag("node")
-        
-    for i, node in pairs(nodes) do
-        if node.s.requiredLinkCount > 0 and #node.s.nodeGOs < node.s.requiredLinkCount then
-            return false            
-        end
-    end
-        
-    local allNodesLinked = self:CheckAllNodesAreLinked()
-    
-    if allNodesLinked then
-    
-        -- check that all nodes have all their link
-        --[[local nodes = GameObject.GetWithTag("node")
-        local notCompletedNodeGOs = {}
-        
-        for i, node in pairs(nodes) do
-            if node.s.maxLinkCount > 0 and #node.s.nodeGOs < node.s.maxLinkCount then
-                table.insert( notCompletedNodeGOs, node )             
-            end
-        end
-        
-        if #notCompletedNodeGOs > 0 then
-            for i, node in pairs(notCompletedNodeGOs) do
-                if node.s.highlightTweener == nil then
-                    node.s:Highlight()
-                end
-            end
-            return false
-        end]]
-    
-        Daneel.Event.Fire("EndLevel") -- catched by [Master Level/EndLevel]
-    end
+    self.pillarGO.transform.localScale = 0 -- using the opacity is not enough as the last node get somehow automatically reselected
 end
 
 
@@ -530,18 +473,4 @@ function Behavior:Update()
             selectedNode.s:Select(false)
         end
     end
-
-    -- fade out link marks
-    if Game.levelEnded and self.frameCount <= linkMarksFadeOutFrames then
-        local opacity = math.lerp( 1, 0, self.frameCount/linkMarksFadeOutFrames )
-
-        for i=1, self.maxLinkCount do
-            if self.linkMarkGOs[i].modelRenderer.opacity ~= 0 then
-                self.linkMarkGOs[i].modelRenderer.opacity = opacity
-            end
-        end
-        
-        self.frameCount = self.frameCount + 1
-    end
-
 end

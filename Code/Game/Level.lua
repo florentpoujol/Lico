@@ -2,43 +2,22 @@
 Levels = {
     -- original level
     {
-        id = 1,
-        name = "T1",
-        scenePath = "Levels/T1",
+        name = "1.1",
+        scenePath = "Levels/1.1",
     },
     {
-        id = 2,
-        name = "2",
-        scenePath = "Levels/2",
+        name = "1.2",
+        scenePath = "Levels/1.2",
     },
     {
-        id = 3,
-        name = "T3",
-        scenePath = "Levels/T3",
+        name = "1.3",
+        scenePath = "Levels/1.3",
     },
     {
-        id = 4,
-        name = "4",
-        scenePath = "Levels/4",
-    },
-    {
-        id = 5,
-        name = "T5",
-        scenePath = "Levels/T5",
-    },
-    {
-        id = 6,
-        name = "6",
-        scenePath = "Levels/6",
+        name = "2.1",
+        scenePath = "Levels/2.1",
     },
     
-    
-        
-    {
-        id = -1,
-        name = "Test",
-        scenePath = "Levels/Test",     
-    },
     {
         id = -3,
         name = "Test2",
@@ -52,6 +31,10 @@ Levels = {
         isRandom = true,      
     },
 }
+
+for i, level in ipairs( Levels ) do
+    level.id = level.id or i
+end
 
 
 --table.mergein( Levels, table.copy(Levels))

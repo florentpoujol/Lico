@@ -24,6 +24,9 @@ function Behavior:Awake()
     nodes.transform.localEulerAngles = Vector3(0)
     
     
+    local levelNameGO = GameObject.Get("Level Name")
+    levelNameGO.textRenderer.text = level.name
+    
     ----------
     -- Help/tutorial window
     
@@ -107,11 +110,13 @@ function Behavior:Awake()
     self:UpdateLevelCamera()
     Daneel.Event.Listen("RandomLevelGenerated", function() self:UpdateLevelCamera() end )
     
-    local worldGO =  GameObject.Get("World")
-    worldGO.modelRenderer:Destroy()
+    self.worldGO = GameObject.Get("World") -- also used in Update()
+    self.worldGO.modelRenderer:Destroy()
     
     --
     UpdateUISize()
+    
+    self.frameCount = 0
 end
 
 
@@ -135,12 +140,61 @@ function Behavior:UpdateLevelCamera()
 end
 
 
+function Behavior:SpawnLeaf()
+    local leaf = GameObject.New("", {
+        parent = "Leaves",
+        transform = {
+            localPosition = Vector3(0),
+            localScale = Vector3( math.randomrange(0.5,2), math.randomrange(0,2), math.randomrange(0.5,2) )
+        },
+        modelRenderer = {
+            model = "Flat Nodes/"..ColorList[math.random(#ColorList)],
+            opacity = math.randomrange(0.2,0.8)
+        },
+        tags = "leaf",
+        
+        frameSpawned = self.frameCount,
+        lifeTime = 600, -- 10 sec
+    } )
+    
+    leaf.rotation = Vector3( math.randomrange(0.1,0.5), math.randomrange(0.1,0.5), math.randomrange(0.1,0.5) )
+    leaf.move = Vector3( math.randomrange(-0.1,0.1), math.randomrange(-0.1,0.1), 0 )
+    
+    leaf.transform:Move( -leaf.move:Normalized() * 30 )
+end
+
+
 function Behavior:Update()
-    if CS.Input.WasButtonJustReleased( "Escape" ) then
-        local sd = GetSelectedNodes()
-        if sd then
-            sd.s:Select(false)
+    self.frameCount = self.frameCount + 1
+    
+    if Game.levelEnded then
+        self.worldGO.transform:RotateLocalEulerAngles(Vector3(0,0.1,0))
+        
+    else
+        if CS.Input.WasButtonJustReleased( "Escape" ) then
+            local sn = GameObject.GetWithTag("selected_node")[1]
+            if sn ~= nil then
+                sn.s:Select(false)
+            end
         end
+        
+        ----------
+        -- leaves
+        
+        if self.frameCount % 90 == 0 then -- spawn one evry 1.5 sec
+            self:SpawnLeaf()
+        end
+    
+        local leaves = GameObject.GetWithTag("leaf")
+        for i, leaf in pairs( leaves ) do
+            leaf.transform:RotateLocalEulerAngles( leaf.rotation )
+            leaf.transform:MoveLocal( leaf.move )
+            
+            if self.frameCount > leaf.frameSpawned + leaf.lifeTime then -- 10 second lifetime
+                leaf:Destroy()
+            end
+        end
+        
     end
 end
 
@@ -149,25 +203,10 @@ end
 function Behavior:EndLevel()
     Game.levelEnded = true
     
-    -- prevent nodes to be selected
-    local nodes = GameObject.GetWithTag("node")
-    for i, node in pairs( nodes ) do
-        node.s.rendererGO:RemoveTag("node_renderer")
+    local leaves = GameObject.GetWithTag("leaf")
+    for i, leaf in pairs( leaves ) do
+        leaf:Destroy()
     end
-    
-    Tween.Timer( 0.1, function()
-        local selectedNode = GameObject.GetWithTag("selected_node")[1]
-        if selectedNode ~= nil then
-            selectedNode.s:Select(false)
-        end
-    end )
-    
-    -- prevent links to be removed
-    local links = GameObject.GetWithTag("link")
-    for i, link in pairs( links ) do
-        link:RemoveTag("link")
-    end
-    
     
     -- next level
     if Game.levelToLoad.name ~= "Random" then
