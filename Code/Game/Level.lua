@@ -4,10 +4,19 @@ Levels = {
     {
         name = "1.1",
         scenePath = "Levels/1.1",
+        hintCount = 4,
+        
+        paths = {
+            { 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 5.2, 4.4, 3.3, 4.2, 3.2, 2.2, 1.1 } -- list of node names that can be linked together
+        }
     },
     {
         name = "1.2",
         scenePath = "Levels/1.2",
+        hintCount = 20,
+        paths = {
+            { 3.3, 2.2, 1.1, 2.1, 3.1, 4.1, 5.1, 4.2, 3.2, 2.2 }
+        }
     },
     {
         name = "1.3",
@@ -34,6 +43,15 @@ Levels = {
 
 for i, level in ipairs( Levels ) do
     level.id = level.id or i
+    level.hintCount = level.hintCount or 3
+    
+    if level.paths ~= nil then
+        for i, path in pairs( level.paths ) do
+            for j, name in pairs( path ) do
+                path[j] = tostring( name )
+            end
+        end
+    end
 end
 
 

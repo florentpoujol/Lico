@@ -1,6 +1,6 @@
 
 function Behavior:Awake()
-    Scene.Append("Background")
+    Scene.Append("Main/Background")
     
     ----------
     local uiMaskGO = GameObject.Get("UI Mask")

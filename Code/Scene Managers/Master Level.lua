@@ -1,6 +1,6 @@
 
 function Behavior:Awake()
-    local bg = Scene.Append("Background")
+    local bg = Scene.Append("Main/Background")
     --local mask = bg:GetChild("Mask", true)
     --mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
     
@@ -13,6 +13,8 @@ function Behavior:Awake()
     
     ----------
     -- Spawn level content
+    
+    Game.nodesByName = {} -- filled in [Node/Awake], used in [Master Level/ShowHint]
     
     local level = Game.levelToLoad or Levels[1]
     local content = Scene.Append( level.scenePath )
@@ -55,6 +57,14 @@ function Behavior:Awake()
     ----------
     -- Icons
     
+    local menuIconGO = GameObject.Get("Icons.Main Menu.Renderer")
+    menuIconGO.OnLeftClickReleased = function(go)
+        uiMaskGO.s:Animate(1,0.5, function()
+            Scene.Load("Main/Main Menu")
+        end )
+    end
+    
+    --
     local helpIconGO = GameObject.Get("Icons.Help.Renderer")
     
     if helpWindowGO ~= nil then
@@ -67,8 +77,29 @@ function Behavior:Awake()
     
     InitIcons() -- here to be called after InitWindow()
     
-    if helpWindowGO ~= nil then
-        helpIconGO:Display(1) -- highlight the the help icon
+    if helpIconGO ~= nil then
+        helpIconGO:Display(1) -- highlight the the help icon and display the help window at the start of the level
+    end
+    
+    --
+    local hintIconGO = GameObject.Get("Icons.Hint.Renderer")
+    
+    self.remainingHintCount = level.hintCount or 0
+    if self.remainingHintCount > 0 then
+        self.levelPaths = level.paths
+    
+        local oOnLeftClickReleased = hintIconGO.OnLeftClickReleased
+        hintIconGO.OnLeftClickReleased = function(go)
+            oOnLeftClickReleased(go)
+            self:ShowHint()
+        end
+        
+        if helpIconGO == nil then
+            hintIconGO.parent.transform:MoveLocal(Vector3(-5,0,0))
+        end
+    else
+        hintIconGO.parent:Destroy()
+        hintIconGO = nil
     end
     
     --
@@ -78,20 +109,15 @@ function Behavior:Awake()
     
     nextIconGO.OnLeftClickReleased = function(go)
         uiMaskGO.s:Animate(1,0.5, function()
-            Scene.Load("Master Level")
+            Scene.Load( Scene.current )
         end )
-    end
-              
-    if helpWindowGO == nil then
-        nextIconGO.parent.transform:Move(Vector3(-5,0,0))
     end
     
-    -- 
-    local menuIconGO = GameObject.Get("Icons.Main Menu.Renderer")
-    menuIconGO.OnLeftClickReleased = function(go)
-        uiMaskGO.s:Animate(1,0.5, function()
-            Scene.Load("Main Menu")
-        end )
+    if helpIconGO == nil then
+        nextIconGO.parent.transform:MoveLocal(Vector3(-5,0,0))
+    end
+    if hintIconGO == nil then
+        nextIconGO.parent.transform:MoveLocal(Vector3(-5,0,0))
     end
 
     ----------
@@ -120,6 +146,7 @@ function Behavior:Awake()
 end
 
 
+-- Called from Awake()
 function Behavior:UpdateLevelCamera()
    local nodes = GameObject.GetWithTag("node")
     local maxValue = 0
@@ -140,28 +167,44 @@ function Behavior:UpdateLevelCamera()
 end
 
 
-function Behavior:SpawnLeaf()
-    local leaf = GameObject.New("", {
-        parent = "Leaves",
-        transform = {
-            localPosition = Vector3(0),
-            localScale = Vector3( math.randomrange(0.5,2), math.randomrange(0,2), math.randomrange(0.5,2) )
-        },
-        modelRenderer = {
-            model = "Flat Nodes/"..ColorList[math.random(#ColorList)],
-            opacity = math.randomrange(0.2,0.8)
-        },
-        tags = "leaf",
+-- Called the Hint icon OnLeftMouseReleased event
+-- Game.nodesByHint table is set in Awake(), filled in [Node/Awake]
+function Behavior:ShowHint()   
+    if self.remainingHintCount > 0 then
+        local nodeNames = self.levelPaths[ math.random( #self.levelPaths ) ]
+        local i = 0
         
-        frameSpawned = self.frameCount,
-        lifeTime = 600, -- 10 sec
-    } )
-    
-    leaf.rotation = Vector3( math.randomrange(0.1,0.5), math.randomrange(0.1,0.5), math.randomrange(0.1,0.5) )
-    leaf.move = Vector3( math.randomrange(-0.1,0.1), math.randomrange(-0.1,0.1), 0 )
-    
-    leaf.transform:Move( -leaf.move:Normalized() * 30 )
+        while i < 1000 do
+            i = i + 1
+            local startId = math.random( #nodeNames - 1 ) -- don't select the last item
+            print( startId, nodeNames[ startId ] )
+            local startNode = Game.nodesByName[ nodeNames[ startId ] ]
+            local endNode = Game.nodesByName[ nodeNames[ startId + 1 ] ]
+            
+            if not table.containsvalue( startNode.s.nodeGOs, endNode ) then
+                startNode.s:Link( endNode )
+                break
+            end
+        end
+        
+        -- 08/10/2014 i can reach values of 20+ at the end of level 1.1 and 2.2
+        
+        -- TODO : don't rely on random tries
+        -- split the paths with more than 2 item in multiple 2 items paths in Level script before runtime
+        -- and remove the paths who have been discovered
+        
+        -- TODO : don't select and remove from possible paths links the player has already created
+        
+        -- TODO : hide Hint icon when no more hint available ?
+        
+        if i > 100 then
+            print("MasterLevel:ShowHint() has looped "..i.." times !")
+        end
+        
+        self.remainingHintCount = self.remainingHintCount - 1
+    end
 end
+
 
 
 function Behavior:Update()
@@ -182,19 +225,8 @@ function Behavior:Update()
         -- leaves
         
         if self.frameCount % 90 == 0 then -- spawn one evry 1.5 sec
-            self:SpawnLeaf()
-        end
-    
-        local leaves = GameObject.GetWithTag("leaf")
-        for i, leaf in pairs( leaves ) do
-            leaf.transform:RotateLocalEulerAngles( leaf.rotation )
-            leaf.transform:MoveLocal( leaf.move )
-            
-            if self.frameCount > leaf.frameSpawned + leaf.lifeTime then -- 10 second lifetime
-                leaf:Destroy()
-            end
-        end
-        
+            Scene.Append("Entities/Leaf")
+        end        
     end
 end
 
@@ -202,11 +234,6 @@ end
 -- Called when EndLevel event is Fired from [Node/CheckVictory]
 function Behavior:EndLevel()
     Game.levelEnded = true
-    
-    local leaves = GameObject.GetWithTag("leaf")
-    for i, leaf in pairs( leaves ) do
-        leaf:Destroy()
-    end
     
     -- next level
     if Game.levelToLoad.name ~= "Random" then

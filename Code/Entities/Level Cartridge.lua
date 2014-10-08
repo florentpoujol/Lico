@@ -28,7 +28,7 @@ function Behavior:SetData( level )
             local uiMaskGO = GameObject.Get("UI Mask")
             uiMaskGO.s:Animate( 1, 0.5, function()
                 Game.levelToLoad = level
-                Scene.Load("Master Level")
+                Scene.Load("Main/Master Level")
             end )
         end
         transitionAnimation()

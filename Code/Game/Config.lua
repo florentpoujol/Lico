@@ -6,6 +6,8 @@ Game = {
     levelToLoad = nil, -- set in [Level Cartridge/SetData levelNameGO OnClick event]
     deletedLinkCount = 0, -- updated in [Connection/OnClick], used in [Level Master/EndLevel]
     backgroundNextColorId = 1,
+    
+    nodesByName = nil, -- set/init in [Master Level/Awake], filled in [Node/Awake], used in [Master Level/ShowHint]
 }
 
 
@@ -31,37 +33,6 @@ AllowedConnectionsByColor= {
 
 ColorList = { "Red", "Orange", "Yellow", "Green", "Blue", "Purple" } -- used for color blind mode and background
 
----------
-
-local blockId = 0
-BlockIds = {}
-
-BlockIds.Square = {
-    White = blockId,
-    Purple = blockId +1,
-    Green = blockId + 2,
-    Orange = blockId + 3,
-    Blue = blockId + 4,
-    Yellow = blockId + 5,
-    Red = blockId + 6,
-}
-
-blockId = blockId + 16
-BlockIds.Hexagon = {
-    White = blockId,
-    Purple = blockId +1,
-    Green = blockId + 2,
-    Orange = blockId + 3,
-    Blue = blockId + 4,
-    Yellow = blockId + 5,
-    Red = blockId + 6,
-}
-
-
-Scenes = {
-    main_menu = "Main Menu",
-    background = "Background"
-}
 
 -------
 

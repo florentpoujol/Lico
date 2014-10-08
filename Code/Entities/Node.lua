@@ -25,6 +25,10 @@ function Behavior:Awake()
         local realNode = Scene.Append("Entities/Node", self.gameObject.parent)
         realNode.transform.localPosition = self.gameObject.transform.localPosition
         
+        local name = self.gameObject.name
+        Game.nodesByName[ name ] = realNode
+        realNode.name = name
+        
         self.maxLinkCount = math.max( self.maxLinkCount, self.requiredLinkCount )
         if self.maxLinkCount == 0 then
             self.maxLinkCount = 4
