@@ -1,5 +1,6 @@
 function Behavior:Awake()
     self.gameObject.camera:Destroy()
+    
     LoadCompletedLevels()
     
     --    

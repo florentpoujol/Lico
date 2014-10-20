@@ -6,6 +6,7 @@ function InitIcons()
     
     for i, iconGO in pairs( iconGOs ) do
         if not iconGO.isInit then
+        print("init icon", iconGO)
             iconGO.isInit = true
             
             local rendererGO = iconGO:GetChild("Renderer")
@@ -58,10 +59,11 @@ function InitIcons()
             
             local onLeftClickReleased = rendererGO.OnLeftClickReleased -- set by GO.InitWindow()
             rendererGO.OnLeftClickReleased = function(go)
-                if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then reenter the icon
+                print("OnLeftClickReleased", go, go.isScaleDown)
+                if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then re-enter the icon
                     go:scaleUp()
                 end
-                
+
                 if onLeftClickReleased ~= nil then
                     onLeftClickReleased()
                 end
@@ -86,7 +88,6 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
         windowGO = go:GetChild( gameObjectNameOrAsset ) or GameObject.Get( gameObjectNameOrAsset )
     end
     
-    --print(windowGO)
     if windowGO == nil then
         print("GameObject.InitWindow(): Window not found", go, gameObjectNameOrAsset, eventType, tag)
         return
@@ -107,6 +108,7 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
     if group ~= nil then
         windowGO:AddTag(group)
         windowGO.OnDisplay = function( go )
+
             if go.isDisplayed then
                 local gos = GameObject.GetWithTag( group )
                 for i, otherGO in pairs( gos ) do
@@ -145,6 +147,12 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
 end
 
 
+
+---------------------------
+
+-- Used in [Main Menu].
+-- Parent the provided child to the game object and set the child at a position of 0,0,0
+-- The child can be the path of a scene.
 function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath )
     local child = gameObjectNameOrInstanceOrScenePath
     if type( child ) == "string" then
@@ -153,7 +161,7 @@ function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath )
             child = Scene.Append( gameObjectNameOrInstanceOrScenePath )
         end
         if child == nil then
-            print("warning")
+            print("warning: GameObject.Append() child is nil", gameObject, gameObjectNameOrInstanceOrScenePath )
         end
     end
     
@@ -163,227 +171,47 @@ function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath )
 end
 
 
--- quick fix for webplayer 
-local ot = TextRenderer.SetText
-function TextRenderer.SetText( tr, t )
-ot( tr, tostring(t) )
-end
+------------------------
 
+-- IMPORTANT
+-- because some menu elements are position on the X,Y plane via a Hud component, 
+-- they must be Displayed/hidden by being moving them on the Z axis only
 
-function GetSelectedNodes()
-    return GameObject.GetWithTag( "selected_node" )[1]
-end
-
-function GetPositionOnCircle( radius, angle )
-    return 
-    radius * math.cos( math.rad( angle ) ),
-    radius * math.sin( math.rad( angle ) )
-end
-
----------------
--- screen
-
-CraftStudio.Screen.oSetSize = CraftStudio.Screen.SetSize
-
---- Sets the size of the screen, in pixels.
--- @params x (number or table) The width of the screen or a table representing the width and height as x and and y components.
--- @params y (number) [optional] The height of the screen (optional when the "x" argument is a table).
-function CraftStudio.Screen.SetSize( x, y )
-    if type( x ) == "table" then
-        y = x.y
-        x = x.x
-    end
-    CraftStudio.Screen.oSetSize( x, y )
-    -- done here so that the aspecty ratio doesn't change is the window is not rezisable
-    CraftStudio.Screen.GetSize() -- reset aspect ratio
-end
-
---- Return the size of the screen, in pixels.
--- @return (Vector2) The screen's size.
-function CraftStudio.Screen.GetSize()
-    local screenSize = CraftStudio.Screen.oGetSize()
-    CraftStudio.Screen.aspectRatio = screenSize.x / screenSize.y
-    return setmetatable( screenSize, Vector2 )
-end
-CraftStudio.Screen.GetSize() -- set aspect ratio
-
-
-----------
--- GUI
-
-
-function GUI.TextArea.SetText( textArea, text )
-    textArea.Text = text
-
-    local lines = { text }
-    if textArea.newLine ~= "" then
-        lines = string.split( text, textArea.NewLine )
-    end
-
-    local textAreaScale = textArea.gameObject.transform:GetLocalScale()
-
-    -- areaWidth is the max length in units of each line
-    local areaWidth = textArea.AreaWidth
-    if areaWidth ~= nil and areaWidth > 0 then
-        -- cut the lines based on their length
-        local tempLines = table.copy( lines )
-        lines = {}
-
-        for i = 1, #tempLines do
-            local line = tempLines[i]
-
-            if textArea.textRuler:GetTextWidth( line ) * textAreaScale.x > areaWidth then
-                local newLine = ""
-
-                for j = 1, #line do
-                    local char = line:sub(j,j)
-                    newLine = newLine..char
-
-                    if textArea.textRuler:GetTextWidth( newLine ) * textAreaScale.x > areaWidth then
-                        
-                        if char == " " then
-                            table.insert( lines, newLine:sub( 1, #newLine-1 ) )
-                            newLine = char
-                        else
-                            -- a word is cut
-                            -- go backward to find the first space char
-                            local word = ""
-                            for k = #newLine, 1, -1 do
-                                local wordLetter = newLine:sub(k,k)
-                                if wordLetter == " " then
-                                    break
-                                else
-                                    word = wordLetter..word
-                                end
-                            end
-                            
-                            table.insert( lines, newLine:sub( 1, #newLine-#word ) )
-                            newLine = word
-                        end
-
-                        if not textArea.WordWrap then
-                            newLine = nil
-                            break
-                        end
-                    end
-                end
-
-                if newLine ~= nil then
-                    table.insert( lines, newLine )
-                end
-            else
-                table.insert( lines, line )
-            end
-        end -- end loop on lines
-    end
-
-    if type( textArea.linesFilter ) == "function" then
-        lines = textArea.linesFilter( textArea, lines ) or lines
-    end
-    
-    local linesCount = #lines
-    local lineGOs = textArea.lineGOs
-    local oldLinesCount = #lineGOs
-    local lineHeight = textArea.LineHeight / textAreaScale.y
-    local gameObject = textArea.gameObject
-    local textRendererParams = {
-        font = textArea.Font,
-        alignment = textArea.Alignment,
-        opacity = textArea.Opacity,
-    }
-
-    -- calculate position offset of the first line based on vertical alignment and number of lines
-    -- the offset is decremented by lineHeight after every lines
-    local offset = -lineHeight / 2 -- verticalAlignment = "top"
-    if textArea.VerticalAlignment == "middle" then
-        offset = lineHeight * linesCount / 2 - lineHeight / 2
-    elseif textArea.VerticalAlignment == "bottom" then
-        offset = lineHeight * linesCount - lineHeight / 2
-    end
-
-    for i=1, linesCount do
-        local line = lines[i]    
-        textRendererParams.text = line
-
-        if lineGOs[i] ~= nil then
-            lineGOs[i].transform:SetLocalPosition( Vector3:New( 0, offset, 0 ) )
-            lineGOs[i].textRenderer:Set( textRendererParams )
-        else
-            local newLineGO = CS.CreateGameObject( "TextArea" .. textArea.id .. "-Line" .. i, gameObject )
-            newLineGO.transform:SetLocalPosition( Vector3:New( 0, offset, 0 ) )
-            newLineGO.transform:SetLocalScale( Vector3:New(1) )
-            newLineGO:CreateComponent( "TextRenderer" )
-            newLineGO.textRenderer:Set( textRendererParams )
-            table.insert( lineGOs, newLineGO )
-        end
-
-        offset = offset - lineHeight 
-    end
-
-    -- this new text has less lines than the previous one
-    if linesCount < oldLinesCount then
-        for i = linesCount + 1, oldLinesCount do
-            lineGOs[i].textRenderer:SetText( "" ) -- don't destroy the line game object, just remove any text
-        end
-    end
-
-    Daneel.Event.Fire( textArea, "OnUpdate", textArea )
-end
-
-
-function Vector2.ToPixel( vector, camera )
-    local vec = Vector2.New(
-        GUI.ToPixel( vector.x, "x", camera ),
-        GUI.ToPixel( vector.y, "y", camera )
-    )
-    --print("Vector2.ToPixel", vec)
-    return vec
-end
-
-function GUI.Hud.SetPosition(hud, position)
-    position = position:ToPixel( hud.cameraGO.camera )
-    local newPosition = hud.cameraGO.hudOriginGO.transform:GetPosition() +
-    Vector3:New(
-        position.x * hud.cameraGO.camera:GetPixelsToUnits(),
-        -position.y * hud.cameraGO.camera:GetPixelsToUnits(),
-        0
-    )
-    newPosition.z = hud.gameObject.transform:GetPosition().z
-    hud.gameObject.transform:SetPosition( newPosition )
-end
-
-
-function GameObject.Display( gameObject, value, forceUseLocalScale )
+function GameObject.Display( gameObject, value, forceUseLocalPosition )
     local display = false
-    if value ~= false and value ~= 0 and value ~= Vector3:New(0) then -- true or non 0 value
+    if value ~= false and value ~= 0 then -- nil, true or non 0 value
         display = true
     end
 
     local valueType = type(value)
     if valueType == "boolean" then
         value = nil
+    elseif valueType == "number" and forceUseLocalPosition == true then
+        value = Vector3:New(value)
+        valueType = "table"
     end  
 
+    --
     local renderer = gameObject.textRenderer or gameObject.modelRenderer or gameObject.mapRenderer
-
-    if valueType ~= "table" and forceUseLocalScale ~= true and renderer ~= nil then
+    
+    if renderer ~= nil and forceUseLocalPosition ~= true and valueType == "number" then
+        if not display and gameObject.displayOpacity == nil then
+            gameObject.displayOpacity = renderer:GetOpacity()
+        end
         if display then
-            value = value or renderer.displayOpacity or 1
+            value = value or gameObject.displayOpacity or 1
         else
-            if renderer.displayOpacity == nil then
-                renderer.displayOpacity = renderer:GetOpacity()
-            end
             value = value or 0
         end
         renderer:SetOpacity( value )
     else
-        if not display and gameObject.transform.displayLocalScale == nil then
-            gameObject.transform.displayLocalScale = gameObject.transform:GetLocalPosition()
+        if not display and gameObject.displayLocalPosition == nil then
+            gameObject.displayLocalPosition = gameObject.transform:GetLocalPosition()
         end
         if display then
-            value = value or gameObject.transform.displayLocalScale or Vector3:New(0)
+            value = value or gameObject.displayLocalPosition or Vector3:New(0)
         else
-            value = value or Vector3:New(0,0,999)
+            value = value or Vector3:New(0,0,999) -- See important notice above
         end
         gameObject.transform:SetLocalPosition( value )
     end
@@ -393,9 +221,18 @@ function GameObject.Display( gameObject, value, forceUseLocalScale )
 end
 
 
-function math.clamp( value, min, max )
-    value = math.max( value, min )
-    value = math.min( value, max )
-    return value
+-----------------
+
+
+-- quick fix for webplayer 
+local ot = TextRenderer.SetText
+function TextRenderer.SetText( tr, t )
+    ot( tr, tostring(t) )
 end
 
+
+function GetPositionOnCircle( radius, angle )
+    return 
+    radius * math.cos( math.rad( angle ) ),
+    radius * math.sin( math.rad( angle ) )
+end

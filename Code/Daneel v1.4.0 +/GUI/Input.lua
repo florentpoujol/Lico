@@ -19,7 +19,7 @@ function Behavior:Awake()
         local params = { 
             isFocused = self.isFocused,
             maxLength = self.maxLength,
-            focusOnbackgroundClick = self.focusOnbackgroundClick,
+            focusOnBackgroundClick = self.focusOnBackgroundClick,
             defaultValue = self.defaultValue,
             cursorBlinkInterval = self.cursorBlinkInterval,
         }

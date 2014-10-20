@@ -5,14 +5,12 @@ function Behavior:Awake()
     ----------
     local uiMaskGO = GameObject.Get("UI Mask")
     uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
-    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
+    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything (and sets the ui mask's model)
     Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- fade the mask out
     
     ----------
     -- Icons / Windows
-    
-    local uiMaskGO = GameObject.Get("UI Mask")
-    
+        
     local windowAnimation = function( windowGO )
         if not windowGO.isDisplayed then
             uiMaskGO.s:Animate( 1, 0.5, function()
@@ -56,7 +54,7 @@ function Behavior:Awake()
         end
     end
    
-    InitIcons() -- actually this will be called latter in [Options/Start]
+    InitIcons()
 
     --
     Daneel.Event.Listen("OnScreenResized", SaveOptions, true ) -- save the new resolution/ui size, whenever the resolution/ui size are modified 
@@ -70,4 +68,5 @@ end
 function Behavior:Start()
     local levelsButton = GameObject.Get("Icons.Levels.Renderer")
     levelsButton:OnLeftClickReleased() -- Select levels window
+    
 end

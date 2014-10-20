@@ -29,6 +29,11 @@ function Behavior:Awake()
     
     plusGO.OnClick = function() increment(1) end
     minusGO.OnClick = function() increment(-1) end
+    
+    -- ColorBlind mode
+    local infoIconGO = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
+    infoIconGO:InitWindow("Color Blind Mode.Info Window", "mouseclick")
+    -- do not put that code in Start because InitWindow would be called after InitIcons() (in [Main Menu]) and overwrite onLeftClickReleased()
 end
 
 
@@ -42,16 +47,12 @@ function Behavior:Start()
     end
     self.colorBlindToggle = checkboxGO.toggle -- used in UpdateMenu()
     
-    
-    local infoIconGO = GameObject.Get("Color Blind Mode.Info Icon")
-    infoIconGO:InitWindow("Color Blind Mode.Info Window", "mouseclick")
-        
     --
     Daneel.Event.Listen("OptionsLoaded", function() self:UpdateMenu() end )    
     LoadOptions() -- fire "OptionsLoaded" event
     -- should be done as early as possible
     
-    InitIcons()
+    --InitIcons()
 end
 
 

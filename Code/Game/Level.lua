@@ -46,14 +46,54 @@ for i, level in ipairs( Levels ) do
     level.hintCount = level.hintCount or 3
     
     if level.paths ~= nil then
+        local newPaths = {}
+        local idsToRemove = {}
+        
         for i, path in pairs( level.paths ) do
             for j, name in pairs( path ) do
                 path[j] = tostring( name )
             end
+            
+            if #path > 2 then
+                local k = 0
+                local newPath = {}
+                table.insert( idsToRemove, i )
+                
+                --for j=1, #path do
+                local j = 0
+                while true do
+                    j = j + 1
+                    local name = path[j]
+                    k = k + 1
+                    
+                    if k == 1 then
+                        newPath = { name }
+                        
+                    elseif k == 2 then
+                        table.insert( newPath, name )
+                        table.insert( newPaths, newPath )
+
+                        if j == #path then
+                            break
+                        end
+                        
+                        j = j - 1
+                        k = 0
+                    end
+                end -- end for path
+            end
+        end -- end for level.Paths
+        
+        if #newPaths > 0 then
+            for i=1, #idsToRemove do
+                table.remove( level.paths, idsToRemove[i] )
+            end
+            table.mergein( level.paths, newPaths )
         end
     end
 end
 
+--table.rprint( Levels )
 
 --table.mergein( Levels, table.copy(Levels))
 --table.mergein( Levels, table.copy(Levels))
