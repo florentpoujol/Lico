@@ -30,6 +30,7 @@ function Behavior:Awake()
     plusGO.OnClick = function() increment(1) end
     minusGO.OnClick = function() increment(-1) end
     
+    ----------
     -- ColorBlind mode
     local infoIconGO = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
     infoIconGO:InitWindow("Color Blind Mode.Info Window", "mouseclick")
@@ -51,8 +52,6 @@ function Behavior:Start()
     Daneel.Event.Listen("OptionsLoaded", function() self:UpdateMenu() end )    
     LoadOptions() -- fire "OptionsLoaded" event
     -- should be done as early as possible
-    
-    --InitIcons()
 end
 
 

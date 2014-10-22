@@ -42,4 +42,3 @@ Daneel.UserConfig = {
         enableStackTrace = true,
     }
 }
-

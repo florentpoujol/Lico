@@ -1,15 +1,13 @@
 
 function Behavior:Awake()
     local bg = Scene.Append("Main/Background")
-    --local mask = bg:GetChild("Mask", true)
-    --mask.modelRenderer.opacity = 0.6 -- makes the background slighly darker so that the nodes stand out more
     
     ---------
+    
     local uiMaskGO = GameObject.Get("UI Mask")
     uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
     uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
-    Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- fade the mask out
-
+    Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- now, the mask hides the whole level, wait 0.5sec to fade it out
     
     ----------
     -- Spawn level content
@@ -17,24 +15,23 @@ function Behavior:Awake()
     Game.nodesByName = {} -- filled in [Node/Awake], used in [Master Level/ShowHint]
     
     local level = Game.levelToLoad or Levels[1]
-    local content = Scene.Append( level.scenePath )
+    local levelNameGO = GameObject.Get("Level Name")
+    levelNameGO.textRenderer.text = level.name
+    
+    local levelContent = Scene.Append( level.scenePath )
     
     -- reparent the nodes
-    local nodes = content:GetChild("Nodes")
+    local nodes = levelContent:GetChild("Nodes")
     nodes.parent = GameObject.Get("Nodes Parent")
     nodes.transform.localPosition = Vector3(0)
     nodes.transform.localEulerAngles = Vector3(0)
-    
-    
-    local levelNameGO = GameObject.Get("Level Name")
-    levelNameGO.textRenderer.text = level.name
     
     ----------
     -- Help/tutorial window
     
     local helpWindowGO = nil -- set below, used in Icons section
     
-    local helpGO = content:GetChild("Help")
+    local helpGO = levelContent:GetChild("Help")
     if helpGO ~= nil then
         local cameraPH = helpGO:GetChild("Camera Placeholder")
         if cameraPH ~= nil then
@@ -49,8 +46,13 @@ function Behavior:Awake()
         local windowGO = helpGO:GetChild("Window")
         if windowGO ~= nil then
             helpWindowGO = windowGO
-            windowGO.parent = GameObject.Get("UI.Help Window")
+            windowGO.parent = GameObject.Get("Help Window Parent")
             windowGO.transform.localPosition = Vector3(0)
+            
+            local contentGO = windowGO.child
+            if contentGO.hud == nil then
+                contentGO:AddComponent("Hud", { position = Vector2(0,40) } )
+            end
         end
     end
 
@@ -69,20 +71,17 @@ function Behavior:Awake()
     
     if helpWindowGO ~= nil then
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
-        helpIconGO:OnLeftClickReleased() -- display window
     else
-        helpIconGO.parent:Destroy()
-        helpIconGO = nil
+        helpIconGO.parent:RemoveTag("icon")
+        helpIconGO.parent:AddTag("inactive_icon")
     end
     
-    InitIcons() -- here to be called after InitWindow()
-    
-    if helpIconGO ~= nil then
-        helpIconGO:Display(1) -- highlight the the help icon and display the help window at the start of the level
-    end
     
     --
+    --[[
     local hintIconGO = GameObject.Get("Icons.Hint.Renderer")
+    hintIconGO.parent:Destroy()
+    hintIconGO = nil
     
     self.remainingHintCount = level.hintCount or 0
     if self.remainingHintCount > 0 then
@@ -101,25 +100,47 @@ function Behavior:Awake()
         hintIconGO.parent:Destroy()
         hintIconGO = nil
     end
-    
+    ]]
     --
     local nextIconGO = GameObject.Get("Icons.Next Level.Renderer")
     self.nextIconGO = nextIconGO
-    nextIconGO.transform:MoveLocal(Vector3(0,0,10)) -- hide the icon (and the tooltip) until the level ends
     
     nextIconGO.OnLeftClickReleased = function(go)
         uiMaskGO.s:Animate(1,0.5, function()
             Scene.Load( Scene.current )
         end )
     end
-    
-    if helpIconGO == nil then
-        nextIconGO.parent.transform:MoveLocal(Vector3(-5,0,0))
-    end
-    if hintIconGO == nil then
-        nextIconGO.parent.transform:MoveLocal(Vector3(-5,0,0))
-    end
 
+    
+    InitIcons() -- here to be called after InitWindow()
+    
+    if helpWindowGO ~= nil then
+        local tooltip = helpIconGO.parent:GetChild("Tooltip")
+        Tween.Timer(1.5, function()
+            tooltip:Display()
+        end)
+        
+        local coords = GameObject.Get("UI Camera").camera:WorldToScreenPoint( helpIconGO.transform.position )
+        -- Note: Camera.Project() returns a bad Vector
+        local beforePos = helpWindowGO.child.hud.position
+        helpWindowGO.child.hud.position = Vector2(coords)
+        helpWindowGO.child.hud.savedPosition = Vector2(coords)
+                
+        local oOnDisplay = helpWindowGO.OnDisplay
+        helpWindowGO.OnDisplay = function(go)
+            if oOnDisplay ~= nil then
+                oOnDisplay(go)
+            end
+
+            local contentGO = go.child
+            if go.isDisplayed then
+                print(go.child.hud.position, go.child.hud.savedPosition)
+            else
+                
+            end
+        end
+    end
+    
     ----------
     -- End level
     
@@ -255,6 +276,11 @@ function Behavior:EndLevel()
     end
     
     --self.nextIconGO.rendererGO:Display(true)
-    self.nextIconGO:OnMouseEnter() -- makes the tooltip show so that the player nows what the new button is for
-    self.nextIconGO.parent.transform:MoveLocal(Vector3(0,0,-10))
+    self.nextIconGO.parent:RemoveTag("inactive_icon")
+    local tooltip = self.nextIconGO.parent:GetChild("Tooltip")
+    InitIcons( self.nextIconGO.parent )
+    tooltip:Display()
+    
+    --self.nextIconGO:OnMouseEnter() -- makes the tooltip show so that the player nows what the new button is for
+    --self.nextIconGO.parent.transform:MoveLocal(Vector3(0,0,-10))
 end

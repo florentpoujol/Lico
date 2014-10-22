@@ -1,6 +1,6 @@
 
 Levels = {
-    -- original level
+
     {
         name = "1.1",
         scenePath = "Levels/1.1",
@@ -28,6 +28,19 @@ Levels = {
     },
     
     {
+        name = "2.2",
+    },
+    {
+        name = "2.3",
+    },
+    {
+        name = "2.4",
+    },
+    {
+        name = "2.5",
+    },
+    
+    {
         id = -3,
         name = "Test2",
         scenePath = "Levels/Test2",     
@@ -44,6 +57,9 @@ Levels = {
 for i, level in ipairs( Levels ) do
     level.id = level.id or i
     level.hintCount = level.hintCount or 3
+    if level.scenePath == nil then
+        level.scenePath = "Levels/"..level.name
+    end
     
     if level.paths ~= nil then
         local newPaths = {}

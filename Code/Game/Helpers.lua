@@ -1,19 +1,33 @@
 
 -- Allow for mouse over effect other than the tooltip
 -- Used in [Main Menu/Awake] and [Master Level/Awake]
-function InitIcons()
-    local iconGOs = GameObject.GetWithTag("icon")
+function InitIcons( iconGOs )
+    if iconGOs ~= nil then
+        if getmetatable( iconGOs ) == GameObject then
+            iconGOs = { iconGOs }
+        end
+        
+        for i, iconGO  in pairs( iconGOs ) do
+            iconGO.isInit = false
+        end
+    end
+    
+    --
+    if iconGOs == nil then
+        iconGOs = GameObject.GetWithTag("icon")
+    end
     
     for i, iconGO in pairs( iconGOs ) do
         if not iconGO.isInit then
-        print("init icon", iconGO)
             iconGO.isInit = true
             
             local rendererGO = iconGO:GetChild("Renderer")
             rendererGO:AddTag("ui")
             
             local tooltipGO = iconGO:GetChild("Tooltip")
-            rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+            if tooltipGO ~= nil then
+                rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+            end
             
             rendererGO:Display(0.5)
             
@@ -59,26 +73,75 @@ function InitIcons()
             
             local onLeftClickReleased = rendererGO.OnLeftClickReleased -- set by GO.InitWindow()
             rendererGO.OnLeftClickReleased = function(go)
-                print("OnLeftClickReleased", go, go.isScaleDown)
                 if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then re-enter the icon
                     go:scaleUp()
                 end
 
                 if onLeftClickReleased ~= nil then
-                    onLeftClickReleased()
+                    onLeftClickReleased(go)
                 end
             end
 
             -- makes the tooltip BG and arrow slighly transparent
-            local tooltipGO = iconGO:GetChild("Tooltip")
             if tooltipGO ~= nil then
-                local bg = tooltipGO:GetChild("Background", true)
-                bg.modelRenderer.opacity = 0.6
-                tooltipGO:GetChild("Arrow", true).textRenderer.opacity = 0.6
-            end
+                local contentGO = tooltipGO:GetChild("Content")
+                tooltipGO.textGO = tooltipGO:GetChild("Text", true)
+                tooltipGO.bar1GO = tooltipGO:GetChild("Background", true)
+                tooltipGO.bar2GO = tooltipGO:GetChild("Arrow", true)
+                
+                local oOnDisplay = tooltipGO.OnDisplay
+                tooltipGO.OnDisplay = function(go)
+                    if oOnDisplay ~= nil then
+                        -- oOnDisplay always exists because the tooltip windows are set in the icon_tooltip group
+                        oOnDisplay(go)
+                    end
+                    
+                    if go.isDisplayed then
+                        tooltipGO.textGO:Display(0)
+                        tooltipGO.bar1GO:Display(0)
+                        tooltipGO.bar2GO:Display(0)
+                        
+                        tooltipGO.textGO:Animate("opacity", 1, 0.5)
+                        tooltipGO.bar1GO:Animate("opacity", 1, 0.5)
+                        tooltipGO.bar2GO:Animate("opacity", 1, 0.5)
+                    else
+                        -- "un-hide" the tooltip
+                        tooltipGO.transform.localPosition = Vector3(0)
+                        
+                        tooltipGO.textGO:Animate("opacity", 0, 0.3)
+                        tooltipGO.bar1GO:Animate("opacity", 0, 0.3)
+                        tooltipGO.bar2GO:Animate("opacity", 0, 0.3, function()
+                            -- "re-hide" the tooltip
+                            tooltipGO.transform.localPosition = Vector3(0,0,999)
+                            
+                            tooltipGO.textGO:Display(1)
+                            tooltipGO.bar1GO:Display(1)
+                            tooltipGO.bar2GO:Display(1)
+                        end)
+                    end -- if go.isDisplayed 
+                end -- tooltipGO.OnDisplay = functin(go)
+                
+                --rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+            end -- if tooltipGO ~= nil
+        end -- if not iconGO.isInit
+    end -- for i, iconGO in pairs( iconGOs )
+    
+    --
+    local iconGOs = GameObject.GetWithTag("inactive_icon")
+    
+    for i, iconGO in pairs( iconGOs ) do
+        if not iconGO.isInit then
+            iconGO.isInit = true
+            
+            local rendererGO = iconGO:GetChild("Renderer")
+            rendererGO:Display(0.1)
+            
+            local tooltipGO = iconGO:GetChild("Tooltip")
+            tooltipGO.transform.localPosition = Vector3(0)
+            tooltipGO:Display(false)
         end
     end
-end
+end -- InitIcons()
 
 
 
@@ -95,7 +158,6 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
     
     --
     windowGO.buttonGO = go
-
     windowGO.transform.localPosition = Vector3(0)
     windowGO:Display(false)
     
@@ -104,11 +166,14 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
         go:AddTag(tag)
     end
 
-    --  
+    --
+    local oFunc = nil -- orginal function
+        
     if group ~= nil then
         windowGO:AddTag(group)
+        
+        oFunc = windowGO.OnDisplay
         windowGO.OnDisplay = function( go )
-
             if go.isDisplayed then
                 local gos = GameObject.GetWithTag( group )
                 for i, otherGO in pairs( gos ) do
@@ -117,21 +182,35 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
                     end
                 end
             end
+            
+            if oFunc ~= nil then
+                oFunc(go)
+            end
         end
     end
 
-    --
+    --   
     if eventType == "mousehover" then
-        go.OnMouseEnter = function()
+        oFunc = go.OnMouseEnter
+        go.OnMouseEnter = function(go)
             windowGO:Display()
+            if oFunc ~= nil then
+                oFunc(go)
+            end
         end
-        go.OnMouseExit = function()
+        
+        oFunc = go.OnMouseExit
+        go.OnMouseExit = function(go)
             windowGO:Display(false)
+            if oFunc ~= nil then
+                oFunc(go)
+            end
         end
         
     elseif eventType == "mouseclick" then
         go.windowGO = windowGO
         
+        oFunc = go.OnLeftClickReleased
         go.OnLeftClickReleased = function()
             if animationFunction == nil then
                 if group ~= nil and not windowGO.isDisplayed then
@@ -142,10 +221,15 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
             else
                 animationFunction( windowGO )
             end
+            
+            if oFunc ~= nil then
+                oFunc(go)
+            end
         end
     end
 end
 
+---------------------------
 
 
 ---------------------------

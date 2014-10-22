@@ -99,19 +99,21 @@ function Behavior:Init( color )
     end
     
     ----------
-    -- link marks
+    -- Link Queue
+    -- The Link Queue chldren must be ordered from 4 (top) to 1 (bootom)
     
     self.linksQueue = self.gameObject:GetChild("Links Queue")
     local marks = self.linksQueue.children
     self.linksQueue.marks = {}
     
     for i, go in ipairs( marks ) do
-        if i <= self.maxLinkCount then
+        --[[if i <= self.maxLinkCount then
             go.transform.localScale = Vector3(0.064,0.1,0.1)
             table.insert( self.linksQueue.marks, go )
         else
             go:Destroy()
-        end
+        end]]
+        go:Destroy()
     end
     
     ----------
@@ -131,6 +133,32 @@ function Behavior:Init( color )
     self.pillarGO.modelRenderer.model = "Nodes/"..color
     self.pillarGO.transform:Move(Vector3(0,-5,0))
     self.pillarGO.transform.localScale = Vector3(1,10,1)
+    
+    -----------
+    -- link queue 2
+    
+    self.linksQueue2 = self.gameObject:GetChild("Links Queue 2")
+    local marks = self.linksQueue2.children
+    self.linksQueue2.marks = {}
+    
+    local offset = Vector3(0,-0.2,0) -- offset from each others
+    self.linksQueue2.transform:MoveLocal(Vector3(0,0.05,0))
+    local scale = Vector3(1.15)
+    scale.y = 1
+    
+    for i, go in ipairs( marks ) do
+        if i <= self.maxLinkCount then
+            --go.transform.localScale = Vector3(0.064,0.1,0.1)
+            table.insert( self.linksQueue2.marks, go )
+            go.modelRenderer.model = "Flat Nodes/"..color
+            go.modelRenderer.opacity = 0.8
+            --go.transform:MoveLocal( offset * i )
+            go.transform.localPosition = offset * i
+            go.transform.localScale = scale
+        else
+            go:Destroy()
+        end
+    end
 end
 
 
@@ -333,11 +361,11 @@ function Behavior:Link( targetGO )
     local otherPosition = targetGO.transform.position
     
     local direction = otherPosition - selfPosition
-    local linkLength = direction:GetLength() -- can be 2, not always = 2 ! (can be 2, 4
+    local linkLength = direction:GetLength() -- not always == 2 ! (can be 2, 4, 6, 8, ...)
     
     linkGO.transform:LookAt(otherPosition)
     linkGO.transform:MoveOriented(Vector3(0,0, -linkLength/2 ))
-    linkGO.transform:Move(Vector3(0, 0.03125, 0)) -- 0.03125 = 1/16/2 : half height of a flat node (whih is 1 texture pixel high)
+    linkGO.transform:Move(Vector3(0, 0.03125, 0)) -- 0.03125 = 1/16/2 : half height of a flat node (whcih is 1 texture pixel high)
     
     linkGO.transform.localScale = Vector3(1,1, linkLength - 1 + 0.02 ) -- make it slighly longer than the gap between the nodes
     
@@ -368,22 +396,40 @@ end
 -- Called from Link() and [Link/OnClick()]
 function Behavior:UpdateLinkQueue( nodeLinkCount )
     nodeLinkCount = nodeLinkCount or #self.nodeGOs
-    local marks = table.reverse( self.linksQueue.marks )
-    for i, go in ipairs( marks ) do
-        local scale = go.transform.localScale
+    --local marks = table.reverse( self.linksQueue.marks )
+    local marks2 = table.reverse( self.linksQueue2.marks )
+    
+    for i, go in ipairs( marks2 ) do
+        --local scale = go.transform.localScale
+        
+        local go2 = go
         
         if i <= nodeLinkCount then
             -- link mark must be hidden
-            if scale.y ~= 0 then
+            --[[if scale.y ~= 0 then
                 scale.y = 0
                 --go.transform.localScale = scale
                 go:Animate("localScale", scale, 0.5)
+            end]]
+            
+            if go2 ~= nil and not go2.isHidden then
+                go2:Animate("opacity", 0, 0.5)
+                go2.startLocalPosition = go2.transform.localPosition
+                go2:Animate("localPosition", Vector3(0,-0.1,0), 0.5)
+                go2.isHidden = true
             end
         else
-            if scale.y == 0 then
+            --[[if scale.y == 0 then
                 scale.y = 0.1 -- depend on required or max link mark
                 --go.transform.localScale = scale
                 go:Animate("localScale", scale, 0.5)
+            end]]
+            
+            if go2 ~= nil and go2.isHidden then
+                go2:Animate("opacity", 1, 0.5)
+                --print(go2.startLocalPosition)
+                go2:Animate("localPosition", go2.startLocalPosition, 0.5)
+                go2.isHidden = false
             end
         end
     end

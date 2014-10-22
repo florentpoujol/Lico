@@ -16,11 +16,16 @@ function Behavior:Awake()
     
     --
     self.gameObject.EndLevel = function()
+        if self.gameObject.lifeTimer ~= nil then
+            self.gameObject.lifeTimer:Destroy()
+            self.gameObject.lifeTimer = nil
+        end
         self.gameObject:Destroy()
     end
     Daneel.Event.Listen( "EndLevel", self.gameObject )
     
-    Tween.Timer( 10, function()
+    self.gameObject.lifeTimer = Tween.Timer( 10, function()
+        self.gameObject.lifeTimer = nil
         Daneel.Event.StopListen( "EndLevel", self.gameObject )
         self.gameObject:Destroy()
     end )

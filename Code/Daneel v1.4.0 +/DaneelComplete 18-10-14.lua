@@ -5124,7 +5124,7 @@ function GUI.TextArea.SetText( textArea, text )
                     if textArea.textRuler:GetTextWidth( newLine ) * textAreaScale.x > areaWidth then
                         if char == " " then
                             table.insert( lines, newLine:sub( 1, #newLine-1 ) )
-                            newLine = char
+                            newLine = ""
                         else
                             -- the end of the line is inside a word
                             -- go backward to find the first space char and cut the line there
@@ -5508,7 +5508,7 @@ function GUI.DefaultConfig()
             hud = {"position", "localPosition", "layer", "localLayer"},
             progressBar = {"value", "height"},
             slider = {"value"},
-            textArea = {"areaWidth", "lineHeight", "opacity"},
+            textArea = {"text", "areaWidth", "lineHeight", "opacity"},
         }
     }
 
@@ -7311,9 +7311,10 @@ end -- end Tween.Update
 -- @return (a component) The component.
 local function resolveTarget( gameObject, property )
     local component = nil
+
     if 
         Daneel.modules.GUI ~= nil and gameObject.hud ~= nil and
-        property == "position" or property == "localPosition"
+        (property == "position" or property == "localPosition")
         -- 02/06/2014 - This is bad, this code should be handled by the GUI module itself
         -- but I have no idea how to properly set that up easily
         -- Plus I really should test the type of the endValue instead (in case it's a Vector3 for instance beacuse the user whants to work on the transform and not the hud)
@@ -7321,6 +7322,7 @@ local function resolveTarget( gameObject, property )
         component = gameObject.hud
     else
         local compNames = Tween.Config.componentNamesByProperty[ property ]
+ 
         if compNames ~= nil then
             for i=1, #compNames do
                 component = gameObject[ compNames[i] ]
