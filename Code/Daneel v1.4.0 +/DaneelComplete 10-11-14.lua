@@ -252,22 +252,6 @@ function string.reverse( s )
     return ns
 end
 
---- Make sure that the case of the provided string is correct by checking it against the values in the provided set.
--- @param s (string) The string to check the case of.
--- @param set (string or table) A single value or a table of values to check the string against.
--- @return (string) The string with the corrected case.
-function string.fixcase( s, set )
-    if type( set ) == "string" then
-        set = { set }
-    end
-    local ls = s:lower()
-    for i=1, #set do
-        local item = set[i]
-        if ls == item:lower() then
-            return item
-        end
-    end
-end
 
 ----------------------------------------------------------------------------------
 -- table
@@ -927,6 +911,23 @@ end
 
 Daneel.Utilities = {}
 
+--- Make sure that the case of the provided string is correct by checking it against the values in the provided set.
+-- @param s (string) The string to check the case of.
+-- @param set (string or table) A single value or a table of values to check the string against.
+-- @return (string) The string with the corrected case.
+function Daneel.Utilities.CaseProof( s, set )
+    if type( set ) == "string" then
+        set = { set }
+    end
+    local ls = s:lower()
+    for i, item in pairs( set ) do
+        if ls == item:lower() then
+            s = item
+            break
+        end
+    end
+    return s
+end
 
 --- Replace placeholders in the provided string with their corresponding provided replacements.
 -- The placeholders are any piece of string prefixed by a semicolon.
@@ -1107,7 +1108,6 @@ Daneel.Debug.functionArgumentsInfo = {
         { "delimiterIsPattern", b, defaultValue = false },
     },
     ["string.reverse"] = { _s },
-    ["string.fixcase"] = { _s, { "set", { s, t } } },
 
     ["table.print"] = {}, -- just for the stacktrace
     ["table.merge"] = {},
@@ -1138,6 +1138,7 @@ Daneel.Debug.functionArgumentsInfo = {
         { "orderBy", s, isOptional = true },
     },
 
+    ["Daneel.Utilities.CaseProof"] = { { "name", s }, { "set", { s, t } } },
     ["Daneel.Utilities.ReplaceInString"] = { { "string", s }, { "replacements", t } },
     ["Daneel.Utilities.ButtonExists"] = { { "buttonName", s } }
 }
@@ -3706,14 +3707,14 @@ function GameObject.BroadcastMessage(gameObject, functionName, data)
     end
 end
 
---- Display or hide the game object. Act on the renderer's opacity or the transform's local position.
--- Sets the "isDisplayed" property to true or false and fire the "OnDisplay" event on the game object.
+--- Display or hide the game object. Act on the renderer's opacity or the transform's local scale.
+-- Sets the "isDisplayed" property to true on the game object.
 -- @param gameObject (GameObject) The game object.
--- @param value (boolean, number or Vector3) [default=true] Tell whether to display or hide the game object (as a boolean), or the opacity (as a number) or the local position (as a Vector3).
--- @param forceUseLocalPosition (boolean) [default=false] Tell whether to force to axt on the game object's local position even when it possess a renderer.
+-- @param value (boolean, number or Vector3) [default=true] Tell whether to display or hide the game object (as a boolean), or the opacity (as a number) or the local scale (as a Vector3).
+-- @param forceUseLocalScale (boolean) [default=false] Tell whether to force to use the local scale (true) even on a game object that has a renderer component, or not.
 function GameObject.Display( gameObject, value, forceUseLocalPosition )
     local display = false
-    if value ~= false and value ~= 0 then -- true or non 0 value
+    if value ~= false and value ~= 0 then -- nil, true or non 0 value
         display = true
     end
 
@@ -3722,6 +3723,7 @@ function GameObject.Display( gameObject, value, forceUseLocalPosition )
         value = nil
     elseif valueType == "number" and forceUseLocalPosition == true then
         value = Vector3:New(value)
+        valueType = "table"
     end  
 
     --
@@ -3744,7 +3746,7 @@ function GameObject.Display( gameObject, value, forceUseLocalPosition )
         if display then
             value = value or gameObject.displayLocalPosition or Vector3:New(1)
         else
-            value = value or Vector3:New(0,-9999,0)
+            value = value or Vector3:New(0,0,999)
         end
         gameObject.transform:SetLocalPosition( value )
     end
@@ -5124,7 +5126,7 @@ function GUI.TextArea.SetText( textArea, text )
                     if textArea.textRuler:GetTextWidth( newLine ) * textAreaScale.x > areaWidth then
                         if char == " " then
                             table.insert( lines, newLine:sub( 1, #newLine-1 ) )
-                            newLine = ""
+                            newLine = char
                         else
                             -- the end of the line is inside a word
                             -- go backward to find the first space char and cut the line there
@@ -5508,7 +5510,7 @@ function GUI.DefaultConfig()
             hud = {"position", "localPosition", "layer", "localLayer"},
             progressBar = {"value", "height"},
             slider = {"value"},
-            textArea = {"text", "areaWidth", "lineHeight", "opacity"},
+            textArea = {"areaWidth", "lineHeight", "opacity"},
         }
     }
 
@@ -7311,10 +7313,9 @@ end -- end Tween.Update
 -- @return (a component) The component.
 local function resolveTarget( gameObject, property )
     local component = nil
-
     if 
         Daneel.modules.GUI ~= nil and gameObject.hud ~= nil and
-        (property == "position" or property == "localPosition")
+        property == "position" or property == "localPosition"
         -- 02/06/2014 - This is bad, this code should be handled by the GUI module itself
         -- but I have no idea how to properly set that up easily
         -- Plus I really should test the type of the endValue instead (in case it's a Vector3 for instance beacuse the user whants to work on the transform and not the hud)
@@ -7322,7 +7323,6 @@ local function resolveTarget( gameObject, property )
         component = gameObject.hud
     else
         local compNames = Tween.Config.componentNamesByProperty[ property ]
- 
         if compNames ~= nil then
             for i=1, #compNames do
                 component = gameObject[ compNames[i] ]

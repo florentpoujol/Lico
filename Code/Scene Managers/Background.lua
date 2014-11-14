@@ -11,6 +11,7 @@ function Behavior:Awake()
     self.backGO = self.gameObject:GetChild("Back")
     
     -- randomize the starting color
+    
     local backColorId = math.random( 1, #ColorList )
     local frontColorId = backColorId - 1
     if frontColorId == 0 then

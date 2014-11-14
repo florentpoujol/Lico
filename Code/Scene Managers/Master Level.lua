@@ -4,6 +4,8 @@ function Behavior:Awake()
     
     ---------
     
+    SetRandomColors() -- set new random colors
+    
     local uiMaskGO = GameObject.Get("UI Mask")
     uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
     uiMaskGO.s:Animate(1,0) -- makes the mask hide everything

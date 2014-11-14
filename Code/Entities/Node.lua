@@ -1,5 +1,5 @@
 --[[PublicProperties
-color string ""
+colorName string ""
 maxLinkCount number 0
 requiredLinkCount number 0
 /PublicProperties]]
@@ -26,21 +26,21 @@ function Behavior:Awake()
         realNode.transform.localPosition = self.gameObject.transform.localPosition
         
         local name = self.gameObject.name
-        Game.nodesByName[ name ] = realNode
+        Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
         
         self.maxLinkCount = math.max( self.maxLinkCount, self.requiredLinkCount )
         if self.maxLinkCount == 0 then
-            self.maxLinkCount = 4
+            self.maxLinkCount = 6
         end
         realNode.s.maxLinkCount = self.maxLinkCount
         realNode.s.requiredLinkCount = self.requiredLinkCount
                 
-        if self.color == "" and self.gameObject.modelRenderer ~= nil then
-            self.color = self.gameObject.modelRenderer.model.name
+        if self.colorName == "" and self.gameObject.modelRenderer ~= nil then
+            self.colorName = self.gameObject.modelRenderer.model.name
         end
-        if self.color ~= "" then
-            realNode.s:Init(self.color)
+        if self.colorName ~= "" then
+            realNode.s:Init(self.colorName)
         end
         
         self.gameObject:Destroy()
@@ -68,15 +68,17 @@ end
 
 
 -- In practice, only called from a node placeholder Awake()
-function Behavior:Init( color )
-    self.gameObject:RemoveTag(self.color)
-    self.gameObject:AddTag(color)
-    self.color = color
+function Behavior:Init( colorName )
+    self.gameObject:RemoveTag(self.colorName)
+    self.gameObject:AddTag(colorName)
+    self.colorName = colorName
     
-    self.shape = "Square"
+    self.color = ColorsByName[ colorName ]  
     
     local rendererGO = self.gameObject:GetChild("Renderer")
-    rendererGO.modelRenderer.model = "Flat Nodes/"..color
+    --rendererGO.modelRenderer.model = "Flat Nodes/"..colorName
+    Color.colorAssetsFolder = "Flat Nodes/"
+    rendererGO.modelRenderer.color = self.color
     
     rendererGO:AddTag("node_renderer")
     rendererGO.OnClick = function() self:OnClick() end
@@ -93,7 +95,7 @@ function Behavior:Init( color )
     
     local numberGO = self.gameObject:GetChild("Color Blind")
     if Options.colorBlindModeActive then
-        numberGO.textRenderer.text = table.getkey( ColorList, self.color )
+        numberGO.textRenderer.text = NumbersByColorName[ colorName ]
     else
         numberGO:Destroy()
     end
@@ -105,60 +107,25 @@ function Behavior:Init( color )
     self.linksQueue = self.gameObject:GetChild("Links Queue")
     local marks = self.linksQueue.children
     self.linksQueue.marks = {}
-    
-    for i, go in ipairs( marks ) do
-        --[[if i <= self.maxLinkCount then
-            go.transform.localScale = Vector3(0.064,0.1,0.1)
+        
+    for i, go in ipairs( marks ) do   
+        if i <= self.maxLinkCount then
             table.insert( self.linksQueue.marks, go )
         else
             go:Destroy()
-        end]]
-        go:Destroy()
+        end
     end
-    
-    ----------
-    -- overlay
-    
-    self.overlayGO = self.gameObject:GetChild("Overlay")
-    self.overlayGO.displayScale = self.overlayGO.transform.localScale
-    self.overlayGO.transform.localScale = Vector3(1)
-    
-    local rendererGO = self.overlayGO:GetChild("Renderer")
-    rendererGO.modelRenderer.model = "Flat Nodes/"..color
+    self.linksQueue.marks = table.reverse( self.linksQueue.marks )
     
     -----------
     -- pillar
     
     self.pillarGO = self.gameObject:GetChild("Pillar")
-    self.pillarGO.modelRenderer.model = "Nodes/"..color
+    Color.colorAssetsFolder = "Nodes/"
+    self.pillarGO.modelRenderer.color = self.color
+    --self.pillarGO.modelRenderer.model = "Nodes/"..colorName
     self.pillarGO.transform:Move(Vector3(0,-5,0))
     self.pillarGO.transform.localScale = Vector3(1,10,1)
-    
-    -----------
-    -- link queue 2
-    
-    self.linksQueue2 = self.gameObject:GetChild("Links Queue 2")
-    local marks = self.linksQueue2.children
-    self.linksQueue2.marks = {}
-    
-    local offset = Vector3(0,-0.2,0) -- offset from each others
-    self.linksQueue2.transform:MoveLocal(Vector3(0,0.05,0))
-    local scale = Vector3(1.15)
-    scale.y = 1
-    
-    for i, go in ipairs( marks ) do
-        if i <= self.maxLinkCount then
-            --go.transform.localScale = Vector3(0.064,0.1,0.1)
-            table.insert( self.linksQueue2.marks, go )
-            go.modelRenderer.model = "Flat Nodes/"..color
-            go.modelRenderer.opacity = 0.8
-            --go.transform:MoveLocal( offset * i )
-            go.transform.localPosition = offset * i
-            go.transform.localScale = scale
-        else
-            go:Destroy()
-        end
-    end
 end
 
 
@@ -244,7 +211,7 @@ function Behavior:OnClick()
     if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one
         --print(selectedDot, self.gameObject)
         --print((self.maxLinkCount <= 0 or (self.maxLinkCount > 0 and #self.nodeGOs < self.maxLinkCount) ))
-        --print( table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.color ], self.color ) )
+        --print( table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.colorName ], self.colorName ) )
         --print(not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ))
         
         if 
@@ -252,7 +219,7 @@ function Behavior:OnClick()
             or (self.maxLinkCount > 0 and #self.nodeGOs < self.maxLinkCount) ) -- prevent the node to be connected if it has no more connoction to make
             and
             
-            table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.color ], self.color ) -- colors of the nodes can connect
+            table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.colorName ], self.colorName ) -- colors of the nodes can connect
             and
             
             not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ) -- if they are not already connected
@@ -294,13 +261,8 @@ function Behavior:Select( select )
             return
         end
         
-        if self.overlayGO.animTweener ~= nil then
-            self.overlayGO.animTweener:Destroy()
-        end
-        --self.overlayGO.animTweener = self.overlayGO:Animate("localScale", self.overlayGO.displayScale, animationTime)
-        
-        --self.pillarGO.modelRenderer.opacity = 0.5
-        self.pillarGO:Animate("opacity", 0.5, 0.5)
+        self.pillarGO.modelRenderer.color = Color( self.color.r, self.color.g, self.color.b, 0.5 )
+        --self.pillarGO:Animate("opacity", 0.5, 0.5)
 
         self.isSelected = true
         
@@ -310,13 +272,9 @@ function Behavior:Select( select )
         end
         self.gameObject:AddTag("selected_node")
     else
-        if self.overlayGO.animTweener ~= nil then
-            self.overlayGO.animTweener:Destroy()
-        end
-        --self.overlayGO.animTweener = self.overlayGO:Animate("localScale", Vector3(1), animationTime)
         
-        --self.pillarGO.modelRenderer.opacity = 0.05
-        self.pillarGO:Animate("opacity", 0.05, 0.5)
+        self.pillarGO.modelRenderer.color = Color( self.color.r, self.color.g, self.color.b, 0.05 )
+        --self.pillarGO:Animate("opacity", 0.05, 0.5)
         
         self.isSelected = false
         self.gameObject:RemoveTag("selected_node")
@@ -375,7 +333,7 @@ function Behavior:Link( targetGO )
     linkGO.transform.localEulerAngles = angles
     
     --
-    linkGO.s:SetColor( self.color, targetGO.s.color )
+    linkGO.s:SetColor( self.colorName, targetGO.s.colorName )
     
     linkGO.s.nodeGOs = { self.gameObject, targetGO }
     --linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
@@ -396,45 +354,17 @@ end
 -- Called from Link() and [Link/OnClick()]
 function Behavior:UpdateLinkQueue( nodeLinkCount )
     nodeLinkCount = nodeLinkCount or #self.nodeGOs
-    --local marks = table.reverse( self.linksQueue.marks )
-    local marks2 = table.reverse( self.linksQueue2.marks )
-    
-    for i, go in ipairs( marks2 ) do
-        --local scale = go.transform.localScale
-        
-        local go2 = go
-        
+    local marks = self.linksQueue.marks
+
+    for i, go in ipairs( marks ) do
         if i <= nodeLinkCount then
-            -- link mark must be hidden
-            --[[if scale.y ~= 0 then
-                scale.y = 0
-                --go.transform.localScale = scale
-                go:Animate("localScale", scale, 0.5)
-            end]]
-            
-            if go2 ~= nil and not go2.isHidden then
-                go2:Animate("opacity", 0, 0.5)
-                go2.startLocalPosition = go2.transform.localPosition
-                go2:Animate("localPosition", Vector3(0,-0.1,0), 0.5)
-                go2.isHidden = true
-            end
+            go:Display(0)
         else
-            --[[if scale.y == 0 then
-                scale.y = 0.1 -- depend on required or max link mark
-                --go.transform.localScale = scale
-                go:Animate("localScale", scale, 0.5)
-            end]]
-            
-            if go2 ~= nil and go2.isHidden then
-                go2:Animate("opacity", 1, 0.5)
-                --print(go2.startLocalPosition)
-                go2:Animate("localPosition", go2.startLocalPosition, 0.5)
-                go2.isHidden = false
-            end
+            go:Display(0.01)
         end
     end
     
-    if nodeLinkCount >= self.maxLinkCount or (self.requiredLinkCount > 0 and nodeLinkCount >= self.requiredLinkCount) then
+    if nodeLinkCount >= self.maxLinkCount then
         self:Select(false)
     end
 end
