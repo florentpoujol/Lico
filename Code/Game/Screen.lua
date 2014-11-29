@@ -11,6 +11,7 @@ function Screen.Load()
     
     -- override GUI.Hud.New so that hud component update their position whevever the screen is resized
     function GUI.Hud.New( gameObject, params )
+        params = params or {}
         local savedPosition = params.position
         local hud = OriginalHudNew( gameObject, params )
         hud.savedPosition = savedPosition

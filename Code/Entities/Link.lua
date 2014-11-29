@@ -4,42 +4,29 @@
 function Behavior:Awake()
     self.gameObject.s = self
     self.gameObject:AddTag("link")
-    self.color = "Red"
-    
-    self.startGradient = self.gameObject:GetChild("Start Gradient", true)
-    self.endGradient = self.gameObject:GetChild("End Gradient", true)
-    
-    self.hitboxGO = self.gameObject:GetChild("Hitbox")
-    self.hitboxGO:AddTag("link_hitbox")
-    self.hitboxGO.OnClick = function() self:OnClick() end
-      
+
+    self.sourceColorGO = self.gameObject:GetChild("Source Color")
+    self.targetColorGO = self.gameObject:GetChild("Target Color")
+    self.targetColorGO:AddTag("link_renderer")
+    self.targetColorGO.OnClick = function()
+        self:OnClick()
+    end
+
     self.nodeGOs = {} -- filled in [Node/Link]
     --self.nodePositions = {} -- filled in [Node/Link], used in [Node/CanLink]
 end
 
 
 function Behavior:SetColor( color, endColor )
-    self.gameObject:RemoveTag(self.color)
-    
-    if Asset("Gradients/"..color) ~= nil and Asset("Gradients/"..endColor) ~= nil then
-        self.startGradient.modelRenderer.model = "Gradients/"..color
-        self.endGradient.modelRenderer.model = "Gradients/"..endColor
-    end
-    
-    self.color = color
-    
-    self.gameObject:AddTag(color)
+    self.sourceColorGO.modelRenderer.color = color
+    self.targetColorGO.modelRenderer.color = endColor    
 end
 
 -- Called when the player clicks on the node's hitbox
-function Behavior:OnClick()
-    -- prevent deleting a link when the mouse is actually over a node
-    --[[local nodeRndrs = GameObject.GetWithTag("node_renderer")
-    for i, rndr in pairs(nodeRndrs) do
-        if rndr.isMouseOver then
-            return
-        end
-    end]]
+function Behavior:OnClick()   
+    if Game.endLevel == true then 
+        return
+    end
     
     --
     local node1 = self.nodeGOs[1]

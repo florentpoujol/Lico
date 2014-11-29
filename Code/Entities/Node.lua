@@ -1,7 +1,6 @@
 --[[PublicProperties
 colorName string ""
-maxLinkCount number 0
-requiredLinkCount number 0
+maxLinkCount number 6
 /PublicProperties]]
 --[[
 goal : check if a node can connect to another
@@ -29,12 +28,7 @@ function Behavior:Awake()
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
         
-        self.maxLinkCount = math.max( self.maxLinkCount, self.requiredLinkCount )
-        if self.maxLinkCount == 0 then
-            self.maxLinkCount = 6
-        end
         realNode.s.maxLinkCount = self.maxLinkCount
-        realNode.s.requiredLinkCount = self.requiredLinkCount
                 
         if self.colorName == "" and self.gameObject.modelRenderer ~= nil then
             self.colorName = self.gameObject.modelRenderer.model.name
@@ -73,11 +67,9 @@ function Behavior:Init( colorName )
     self.gameObject:AddTag(colorName)
     self.colorName = colorName
     
-    self.color = ColorsByName[ colorName ]  
+    self.color = ColorsByName[ colorName ]
     
     local rendererGO = self.gameObject:GetChild("Renderer")
-    --rendererGO.modelRenderer.model = "Flat Nodes/"..colorName
-    Color.colorAssetsFolder = "Flat Nodes/"
     rendererGO.modelRenderer.color = self.color
     
     rendererGO:AddTag("node_renderer")
@@ -94,7 +86,9 @@ function Behavior:Init( colorName )
     -- color Blind
     
     local numberGO = self.gameObject:GetChild("Color Blind")
+    
     if Options.colorBlindModeActive then
+        self.numberGO = numberGO
         numberGO.textRenderer.text = NumbersByColorName[ colorName ]
     else
         numberGO:Destroy()
@@ -108,9 +102,10 @@ function Behavior:Init( colorName )
     local marks = self.linksQueue.children
     self.linksQueue.marks = {}
         
-    for i, go in ipairs( marks ) do   
+    for i, go in ipairs( marks ) do -- loop on children from 1 to 6
         if i <= self.maxLinkCount then
             table.insert( self.linksQueue.marks, go )
+            go.modelRenderer.color = self.color
         else
             go:Destroy()
         end
@@ -121,11 +116,12 @@ function Behavior:Init( colorName )
     -- pillar
     
     self.pillarGO = self.gameObject:GetChild("Pillar")
-    Color.colorAssetsFolder = "Nodes/"
+    --Color.colorAssetsFolder = "Nodes/"
+    
     self.pillarGO.modelRenderer.color = self.color
-    --self.pillarGO.modelRenderer.model = "Nodes/"..colorName
-    self.pillarGO.transform:Move(Vector3(0,-5,0))
-    self.pillarGO.transform.localScale = Vector3(1,10,1)
+    self.pillarGO.modelRenderer.opacity = 0.05
+    --self.pillarGO.transform:Move(Vector3(0,-5,0))
+    --self.pillarGO.transform.localScale = Vector3(1,10,1)
 end
 
 
@@ -261,8 +257,9 @@ function Behavior:Select( select )
             return
         end
         
-        self.pillarGO.modelRenderer.color = Color( self.color.r, self.color.g, self.color.b, 0.5 )
-        --self.pillarGO:Animate("opacity", 0.5, 0.5)
+        --self.pillarGO.modelRenderer.opacity = 0.5
+        self.pillarGO:Animate("opacity", 0.5, 0.5)
+        --print("0.5", self.pillarGO.modelRenderer.opacity, self.pillarGO.frontColorRenderer.opacity)
 
         self.isSelected = true
         
@@ -273,8 +270,9 @@ function Behavior:Select( select )
         self.gameObject:AddTag("selected_node")
     else
         
-        self.pillarGO.modelRenderer.color = Color( self.color.r, self.color.g, self.color.b, 0.05 )
-        --self.pillarGO:Animate("opacity", 0.05, 0.5)
+        --self.pillarGO.modelRenderer.opacity = 0.05
+        --print("0.05", self.pillarGO.modelRenderer.opacity, self.pillarGO.frontColorRenderer.opacity)
+        self.pillarGO:Animate("opacity", 0.05, 0.5)
         
         self.isSelected = false
         self.gameObject:RemoveTag("selected_node")
@@ -285,8 +283,8 @@ end
 -- Check there isn't a link or other node in between
 function Behavior:CanLink( targetGO )   
     if table.containsvalue( self.linkableNodes, targetGO ) then
-        -- both node can link f there isn't a link in between
-        
+        -- both node can link apriori
+        -- now check that there isn't a link in between        
         local nodeRndrGOs = GameObject.GetWithTag("link_hitbox") 
         table.removevalue( nodeRndrGOs, self.rendererGO )
         table.removevalue( nodeRndrGOs, targetGO.s.rendererGO )
@@ -322,9 +320,7 @@ function Behavior:Link( targetGO )
     local linkLength = direction:GetLength() -- not always == 2 ! (can be 2, 4, 6, 8, ...)
     
     linkGO.transform:LookAt(otherPosition)
-    linkGO.transform:MoveOriented(Vector3(0,0, -linkLength/2 ))
-    linkGO.transform:Move(Vector3(0, 0.03125, 0)) -- 0.03125 = 1/16/2 : half height of a flat node (whcih is 1 texture pixel high)
-    
+    linkGO.transform:MoveOriented(Vector3(0,0, -linkLength/2 ))   
     linkGO.transform.localScale = Vector3(1,1, linkLength - 1 + 0.02 ) -- make it slighly longer than the gap between the nodes
     
     -- make the link appear in the same plane as the nodes
@@ -333,7 +329,7 @@ function Behavior:Link( targetGO )
     linkGO.transform.localEulerAngles = angles
     
     --
-    linkGO.s:SetColor( self.colorName, targetGO.s.colorName )
+    linkGO.s:SetColor( self.color, targetGO.s.color )
     
     linkGO.s.nodeGOs = { self.gameObject, targetGO }
     --linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
@@ -356,11 +352,22 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
     nodeLinkCount = nodeLinkCount or #self.nodeGOs
     local marks = self.linksQueue.marks
 
-    for i, go in ipairs( marks ) do
+    for i, go in ipairs( marks ) do 
+        -- loop on the existing marks in rfrom biggest num to 1
         if i <= nodeLinkCount then
-            go:Display(0)
+            -- hide the link
+            --go:Display(0)
+            if go.modelRenderer.opacity ~= 0 then
+                go:Animate("opacity", 0.5, 0.5, function(tweener) 
+                tweener.target.opacity = 0 
+                end)
+            end
         else
-            go:Display(0.01)
+            if go.modelRenderer.opacity == 0 then
+                --go:Display(01)
+                go.modelRenderer.opacity = 0.5
+                go:Animate("opacity", 0.01, 0.5)
+            end
         end
     end
     
@@ -377,11 +384,6 @@ function Behavior:CheckVictory()
         -- quick-search for nodes without links
         if #node.s.linkGOs == 0 then
             return false
-        end
-        
-        -- check that all nodes have their required link count
-        if node.s.requiredLinkCount > 0 and #node.s.nodeGOs < node.s.requiredLinkCount then
-            return false            
         end
     end
     
@@ -414,7 +416,6 @@ function Behavior:CheckVictory()
         return false
     end
     
-    
     -- By now all nodes are OK and linked together
     Daneel.Event.Fire("EndLevel") -- catched by [Master Level/EndLevel] and all node's EndLevel()
 end
@@ -425,13 +426,18 @@ function Behavior:EndLevel()
     self.rendererGO:RemoveTag("node_renderer")
     
     -- prevent links to be removed
-    for i, link in pairs( self.linkGOs ) do
-        link.s.hitboxGO:RemoveTag("link_hitbox")
-    end
+    --for i, link in pairs( self.linkGOs ) do
+        --link.s.hitboxGO:RemoveTag("link_hitbox")
+    --end
     
-    self:UpdateLinkQueue(4) -- do as if the node had 4 links, hidding all the link marks
+    self:UpdateLinkQueue(99) -- do as if the node had 4 links, hidding all the link marks
 
     self.pillarGO.transform.localScale = 0 -- using the opacity is not enough as the last node get somehow automatically reselected
+    
+    -- hide the numbers
+    if self.numberGO ~= nil then
+        self.numberGO.textRenderer.opacity = 0
+    end
 end
 
 

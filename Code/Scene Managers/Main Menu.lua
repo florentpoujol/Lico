@@ -1,4 +1,23 @@
+local t1 = { 1, 2, key = "value" }
+    local t2 = { 3, key = "other value", otherKey = "value" }
+    table.mergein( t1, t2 )
+    
+    table.print( t1 ) -- this print in the Runtime Report :
 
+
+    t1.t1 = t1
+    t1.table2 = {
+        
+        1, key = "value", t1 = t1,
+        t3 = {
+            otherKey = 1,
+            2
+        }
+    }
+    
+
+    table.rprint( t1 ) -- this print in the Runtime Report :
+    
 function Behavior:Awake()
     Scene.Append("Main/Background")
     
@@ -42,16 +61,13 @@ function Behavior:Awake()
     local allWindows =  GameObject.Get("UI.Windows").children
     
     for i, windowGO in pairs( allWindows ) do
-        local oOnDisplay = windowGO.OnDisplay -- set by GameObject.InitWindow()
-        windowGO.OnDisplay = function( go )
-            oOnDisplay(go)
-            
+        windowGO:AddEventListener( "OnDisplay", function( go )           
             if go.isDisplayed then
                 go.buttonGO:Display(1)
             else
                 go.buttonGO:Display(0.5)
             end
-        end
+        end )
     end
    
     InitIcons()
@@ -67,6 +83,6 @@ end
 
 function Behavior:Start()
     local levelsButton = GameObject.Get("Icons.Levels.Renderer")
-    levelsButton:OnLeftClickReleased() -- Select levels window
+    levelsButton:FireEvent("OnLeftClickReleased", levelsButton) -- Select levels window
     
 end

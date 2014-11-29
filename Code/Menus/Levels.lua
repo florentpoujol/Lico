@@ -19,14 +19,18 @@ function Behavior:Awake()
 
     ----------
     Daneel.Event.Listen("CompletedLevelsLoaded", function() 
-        print("loaded")
         if self.firstLevelIndex ~= nil then
             self:BuildLevelGrid()
         end
     end )
         
     self:BuildLevelGrid()
-
+    
+    
+    ------------
+    -- spawn random generator form
+    
+    GameObject.Get("Generator Form Origin"):Append("Menus/Generator Form")
 end
 
 

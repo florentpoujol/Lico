@@ -17,23 +17,22 @@ function Behavior:Awake()
     Game.nodesByName = {} -- filled in [Node/Awake], used in [Master Level/ShowHint]
     
     local level = Game.levelToLoad or Levels[1]
-    local levelNameGO = GameObject.Get("Level Name")
-    levelNameGO.textRenderer.text = level.name
+    self.levelNameGO = GameObject.Get("Level Name")
+    self.levelNameGO.textRenderer.text = level.name
     
-    local levelContent = Scene.Append( level.scenePath )
-    
-    -- reparent the nodes
-    local nodes = levelContent:GetChild("Nodes")
-    nodes.parent = GameObject.Get("Nodes Parent")
-    nodes.transform.localPosition = Vector3(0)
-    nodes.transform.localEulerAngles = Vector3(0)
-    
+    self.levelRoot = Scene.Append( level.scenePath )
+    if not level.isRandom then
+        self:ReparentNodes()
+    end
+    -- when level is random, reparenting will be done when the node have been generated in Generator.initFunction()
+
+
     ----------
     -- Help/tutorial window
     
     local helpWindowGO = nil -- set below, used in Icons section
     
-    local helpGO = levelContent:GetChild("Help")
+    local helpGO = self.levelRoot:GetChild("Help")
     if helpGO ~= nil then
         local cameraPH = helpGO:GetChild("Camera Placeholder")
         if cameraPH ~= nil then
@@ -53,7 +52,7 @@ function Behavior:Awake()
             
             local contentGO = windowGO.child
             if contentGO.hud == nil then
-                contentGO:AddComponent("Hud", { position = Vector2(0,40) } )
+                contentGO:AddComponent("Hud")
             end
         end
     end
@@ -73,6 +72,7 @@ function Behavior:Awake()
     
     if helpWindowGO ~= nil then
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
+        helpWindowGO.child.hud.position = Vector2(0,40) 
     else
         helpIconGO.parent:RemoveTag("icon")
         helpIconGO.parent:AddTag("inactive_icon")
@@ -125,6 +125,7 @@ function Behavior:Awake()
         local coords = GameObject.Get("UI Camera").camera:WorldToScreenPoint( helpIconGO.transform.position )
         -- Note: Camera.Project() returns a bad Vector
         local beforePos = helpWindowGO.child.hud.position
+        coords = Vector2(0,40)
         helpWindowGO.child.hud.position = Vector2(coords)
         helpWindowGO.child.hud.savedPosition = Vector2(coords)
                 
@@ -136,7 +137,7 @@ function Behavior:Awake()
 
             local contentGO = go.child
             if go.isDisplayed then
-                print(go.child.hud.position, go.child.hud.savedPosition)
+                --print(go.child.hud.position, go.child.hud.savedPosition)
             else
                 
             end
@@ -155,9 +156,11 @@ function Behavior:Awake()
     self.endLevelGO.transform.localPosition = Vector3(0,-40,0)
     
     
-     --
-    self:UpdateLevelCamera()
-    Daneel.Event.Listen("RandomLevelGenerated", function() self:UpdateLevelCamera() end )
+    --
+    if not level.isRandom then
+        self:UpdateLevelCamera() 
+    end
+    -- when random level, is from Generator.initFunction()
     
     self.worldGO = GameObject.Get("World") -- also used in Update()
     self.worldGO.modelRenderer:Destroy()
@@ -169,7 +172,27 @@ function Behavior:Awake()
 end
 
 
--- Called from Awake()
+function Behavior:Start()
+    local func = Game.levelToLoad.initFunction 
+    if func ~= nil then
+        func( self )
+    end
+end
+
+
+-- Reparent the nodes from the level content's root to the world's node parent
+-- Called from Awake() or Generator.initFunction()
+function Behavior:ReparentNodes()
+    local nodes = self.levelRoot:GetChild("Nodes")
+    nodes.parent = GameObject.Get("World.Nodes Parent")
+    nodes.transform.localPosition = Vector3(0)
+    nodes.transform.localEulerAngles = Vector3(0)
+end
+
+
+-- Updates the World camera's orthographic scale so that the whole level (not more, not less) just fit in the viewport
+-- Nodes must have been reparented with ReparentNodes() before.
+-- Called from Awake() or Generator.initFunction()
 function Behavior:UpdateLevelCamera()
    local nodes = GameObject.GetWithTag("node")
     local maxValue = 0
@@ -182,11 +205,6 @@ function Behavior:UpdateLevelCamera()
 
     local scale = math.ceil(maxValue + 1) * 2
     GameObject.Get("World Camera").camera.orthographicScale = math.max( scale, 5 ) -- min=10
-
-    if Game.levelToLoad.name == "Random" then
-        GameObject.Get("World Camera").camera.orthographicScale = 20
-        --print("set camera")
-    end
 end
 
 
@@ -247,9 +265,9 @@ function Behavior:Update()
         ----------
         -- leaves
         
-        if self.frameCount % 90 == 0 then -- spawn one evry 1.5 sec
-            Scene.Append("Entities/Leaf")
-        end        
+        --if self.frameCount % 90 == 0 then -- spawn one evry 1.5 sec
+            --Scene.Append("Entities/Leaf")
+        --end        
     end
 end
 
@@ -261,20 +279,22 @@ function Behavior:EndLevel()
     -- next level
     if Game.levelToLoad.name ~= "Random" then
         local currentLevel = GetLevel( Game.levelToLoad.name )
-        currentLevel.isCompleted = true
-        SaveCompletedLevels()
-        
-        local nextLevel = nil
-        for i, level in ipairs( Levels ) do
-            if not level.isCompleted and level.id > currentLevel.id then
-                nextLevel = level
-                break
+        if currentLevel ~= nil then -- is nil for random level
+            currentLevel.isCompleted = true
+            SaveCompletedLevels()
+            
+            local nextLevel = nil
+            for i, level in ipairs( Levels ) do
+                if not level.isCompleted and level.id > currentLevel.id then
+                    nextLevel = level
+                    break
+                end
             end
+            if nextLevel == nil then
+                nextLevel = Levels[ math.random( #Levels ) ]
+            end
+            Game.levelToLoad = nextLevel
         end
-        if nextLevel == nil then
-            nextLevel = Levels[ math.random( #Levels ) ]
-        end
-        Game.levelToLoad = nextLevel
     end
     
     --self.nextIconGO.rendererGO:Display(true)

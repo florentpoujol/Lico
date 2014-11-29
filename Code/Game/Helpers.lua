@@ -31,15 +31,9 @@ function InitIcons( iconGOs )
             
             rendererGO:Display(0.5)
             
-            -- override OnMouseEnter/Exit set by GO.InitWindow()
-            local onMouseEnter = rendererGO.OnMouseEnter
-            rendererGO.OnMouseEnter = function(go)
-                rendererGO:Display(1)               
-                onMouseEnter(go)
-            end
+            rendererGO:AddEventListener( "OnMouseEnter", function(go) go:Display(1) end )
             
-            local onMouseExit = rendererGO.OnMouseExit
-            rendererGO.OnMouseExit = function(go)
+            rendererGO:AddEventListener( "OnMouseExit", function(go)
                 if go.windowGO == nil or not go.windowGO.isDisplayed then -- in this last case go.windowGO is the actual window that is displayed via mouseclick event (not the tooltip)
                     go:Display(0.5)
                 end
@@ -48,9 +42,7 @@ function InitIcons( iconGOs )
                     -- icon has been clicked but the mouse exited it before the OnLeftClickReleased event
                    go:scaleUp()
                 end
-                
-                onMouseExit(go)
-            end
+            end )
             
             -- on left click pressed, scale down the icon
             local scaleModifier = 0.8
@@ -71,16 +63,11 @@ function InitIcons( iconGOs )
                 go:scaleDown()
             end
             
-            local onLeftClickReleased = rendererGO.OnLeftClickReleased -- set by GO.InitWindow()
-            rendererGO.OnLeftClickReleased = function(go)
+            rendererGO:AddEventListener( "OnLeftClickReleased", function(go)
                 if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then re-enter the icon
                     go:scaleUp()
                 end
-
-                if onLeftClickReleased ~= nil then
-                    onLeftClickReleased(go)
-                end
-            end
+            end )
 
             -- makes the tooltip BG and arrow slighly transparent
             if tooltipGO ~= nil then
@@ -89,13 +76,7 @@ function InitIcons( iconGOs )
                 tooltipGO.bar1GO = tooltipGO:GetChild("Background", true)
                 tooltipGO.bar2GO = tooltipGO:GetChild("Arrow", true)
                 
-                local oOnDisplay = tooltipGO.OnDisplay
-                tooltipGO.OnDisplay = function(go)
-                    if oOnDisplay ~= nil then
-                        -- oOnDisplay always exists because the tooltip windows are set in the icon_tooltip group
-                        oOnDisplay(go)
-                    end
-                    
+                tooltipGO:AddEventListener( "OnDisplay", function(go)                   
                     if go.isDisplayed then
                         tooltipGO.textGO:Display(0)
                         tooltipGO.bar1GO:Display(0)
@@ -119,7 +100,7 @@ function InitIcons( iconGOs )
                             tooltipGO.bar2GO:Display(1)
                         end)
                     end -- if go.isDisplayed 
-                end -- tooltipGO.OnDisplay = functin(go)
+                end )
                 
                 --rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
             end -- if tooltipGO ~= nil
@@ -172,8 +153,7 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
     if group ~= nil then
         windowGO:AddTag(group)
         
-        oFunc = windowGO.OnDisplay
-        windowGO.OnDisplay = function( go )
+        windowGO:AddEventListener( "OnDisplay", function( go )
             if go.isDisplayed then
                 local gos = GameObject.GetWithTag( group )
                 for i, otherGO in pairs( gos ) do
@@ -182,36 +162,23 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
                     end
                 end
             end
-            
-            if oFunc ~= nil then
-                oFunc(go)
-            end
-        end
+        end )
     end
 
     --   
     if eventType == "mousehover" then
-        oFunc = go.OnMouseEnter
-        go.OnMouseEnter = function(go)
+        go:AddEventListener( "OnMouseEnter", function(go)
             windowGO:Display()
-            if oFunc ~= nil then
-                oFunc(go)
-            end
-        end
+        end )
         
-        oFunc = go.OnMouseExit
-        go.OnMouseExit = function(go)
+        go:AddEventListener( "OnMouseExit", function(go)
             windowGO:Display(false)
-            if oFunc ~= nil then
-                oFunc(go)
-            end
-        end
+        end )
         
     elseif eventType == "mouseclick" then
         go.windowGO = windowGO
         
-        oFunc = go.OnLeftClickReleased
-        go.OnLeftClickReleased = function()
+        go:AddEventListener( "OnLeftClickReleased", function()
             if animationFunction == nil then
                 if group ~= nil and not windowGO.isDisplayed then
                     windowGO:Display()
@@ -221,11 +188,7 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
             else
                 animationFunction( windowGO )
             end
-            
-            if oFunc ~= nil then
-                oFunc(go)
-            end
-        end
+        end )
     end
 end
 
@@ -321,159 +284,21 @@ function GetPositionOnCircle( radius, angle )
     radius * math.sin( math.rad( angle ) )
 end
 
+local o = ModelRenderer.GetOpacity
+function ModelRenderer.GetOpacity( r)
+    return math.round( o(r), 4 )
+end
 
--------------------------------------------------
-
-function Daneel.Event.Fire( object, eventName, ... )
-    local arg = {...}
-    Daneel.Debug.StackTrace.BeginFunction( "Daneel.Event.Fire", object, eventName, ... )
-    local errorHead = "Daneel.Event.Fire( [object, ]eventName[, ...] ) : "
-
-    local argType = type( object )
-    if argType == "string" then
-        -- no object provided, fire on the listeners
-        if eventName ~= nil then
-            table.insert( arg, 1, eventName )
-        end
-        eventName = object
-        object = nil
-    
-    elseif argType ~= "nil" then
-        Daneel.Debug.CheckArgType( object, "object", "table", errorHead )
-        Daneel.Debug.CheckArgType( eventName, "eventName", "string", errorHead )
-    end
-
-
-    local listeners = { object }
-    if object == nil then
-        if Daneel.Event.events[ eventName ] ~= nil then
-            listeners = Daneel.Event.events[ eventName ]
-        end
-        if Daneel.Event.persistentEvents[ eventName ] ~= nil then
-            listeners = table.merge( listeners, Daneel.Event.persistentEvents[ eventName ] )
+--- Returns a string representation of the vector's component's values.
+-- ie: For a vector {-6.5,10}, the returned string would be "-6.5 10".
+-- Such string can be converted back to a vector with string.tovector()
+-- @param vector (Vector2) The vector.
+-- @return (string) The string.
+function Vector2.ToString( vector )
+    for i, comp in pairs({"x", "y"}) do
+        if tostring(vector[comp]) == "-0" then
+            vector[comp] = 0
         end
     end
-
-    local listenersToBeRemoved = {}
-    for i=1, #listeners do
-        local listener = listeners[i]
-
-        local listenerType = type( listener )
-        if listenerType == "function" or listenerType == "userdata" then
-            if listener( unpack( arg ) ) == false then
-                table.insert( listenersToBeRemoved, listener )
-            end
-
-        else -- an object
-            local mt = getmetatable( listener )
-            local listenerIsAlive = not listener.isDestroyed
-            if mt == GameObject and listener.inner == nil then
-                listenerIsAlive = false
-            end
-            if listenerIsAlive then -- ensure that the event is not fired on a dead game object or component
-                local functions = {} -- list of listener functions attached to this object
-                if listener.listenersByEvent ~= nil and listener.listenersByEvent[ eventName ] ~= nil then
-                    functions = listener.listenersByEvent[ eventName ]
-                end
-
-                -- Look for the value of the EventName property on the object
-                local func = rawget( listener, eventName )
-                -- Using rawget() prevent a 'Behavior function' to be called as a regular function when the listener is a ScriptedBehavior
-                -- because the function exists on the Script object and not on the ScriptedBehavior (the listener),
-                -- in which case rawget() returns nil
-                if func ~= nil then
-                    table.insert( functions, func )
-                end
-
-                -- call all listener functions
-                for j=1, #functions do
-                    functions[j]( ... )
-                end
-
-                -- always try to send the message if the object is a game object
-                if mt == GameObject then
-                    listener:SendMessage( eventName, arg )
-                end
-            end
-        end
-
-    end -- end for listeners
-
-    
-    for i=1, #listenersToBeRemoved do
-        Daneel.Event.StopListen( eventName, listenersToBeRemoved[i] )
-    end
-    Daneel.Debug.StackTrace.EndFunction()
+    return vector.x.." "..vector.y
 end
-
---- Fire an event at the provided game object.
--- @param gameObject (GameObject) The game object.
--- @param eventName (string) The event name.
--- @param ... [optional] Some arguments to pass along.
-function GameObject.FireEvent( gameObject, eventName, ... )
-    Daneel.Event.Fire( gameObject, eventName, ... )
-end
-
---- Add a listener function for the specified local event on this object.
--- @param object (table) The object.
--- @param eventName (string) The name of the event to listen to.
--- @param listener (function or userdata) The listener function.
-function Daneel.Event.AddEventListener( object, eventName, listener )
-    if object.listenersByEvent == nil then
-        object.listenersByEvent = {}
-    end
-    if object.listenersByEvent[ eventName ] == nil then
-        object.listenersByEvent[ eventName ] = {}
-    end
-    if not table.containsvalue( object.listenersByEvent[ eventName ], listener ) then
-        table.insert( object.listenersByEvent[ eventName ], listener )
-    elseif Daneel.Debug.enableDebug == true then
-        print("Daneel.Event.AddEventListener(): Function "..tostring(listener).." already listen for event '"..eventName.."' on object: ", object)
-    end
-end
-
---- Add a listener function for the specified local event on this game object.
--- Alias of Daneel.Event.AddEventListener().
--- @param gameObject (GameObject) The game object.
--- @param eventName (string) The name of the event to listen to.
--- @param listener (function or userdata) The listener function.
-function GameObject.AddEventListener( gameObject, eventName, listener )
-    Daneel.Event.AddEventListener( gameObject, eventName, listener )
-end
-
---- Remove the specified listener for the specified local event on this object
--- @param object (table) The object.
--- @param eventName (string) The name of the event.
--- @param listener (function or userdata) [optional] The listener function to remove. If nil, all listeners will be removed for the specified event.
-function Daneel.Event.RemoveEventListener( object, eventName, listener )
-    if object.listenersByEvent ~= nil and object.listenersByEvent[ eventName ] ~= nil then
-        if listener ~= nil then
-            table.removevalue( object.listenersByEvent[ eventName ], listener )
-        else
-            object.listenersByEvent[ eventName ] = nil
-        end
-    end
-end
-
---- Remove the specified listener for the specified local event on this game object.
--- Alias of Daneel.Event.RemoveEventListener().
--- @param gameObject (GameObject) The game object.
--- @param eventName (string) The name of the event. May be nil or have the value of the 'listener' argument: the listener will be removed from all events.
--- @param listener (function or userdata) [optional] The listener function to remove. If nil, all listeners will be removed for the specified event.
-function GameObject.RemoveEventListener( gameObject, eventName, listener )
-    Daneel.Event.RemoveEventListener( gameObject, eventName, listener )
-end
-
-local s = "string"
-local f = "function"
-local u = "userdata"
-local t = "table"
-
-table.mergein( Daneel.Debug.functionArgumentsInfo, {
-    ["Daneel.Event.Listen"] = { { "eventName", { s, t } }, { "functionOrObject", {t, f, u} }, { "isPersistent", defaultValue = false } },
-    ["GameObject.FireEvent"] = { { "gameObject", "GameObject" }, { "eventName", s } },
-    ["Daneel.Event.AddEventListener"] = { { "object", "table" }, { "eventName", s }, { "listener", { f, u } } },
-    ["GameObject.AddEventListener"] =   { { "gameObject", "GameObject" }, { "eventName", s }, { "listener", { f, u } } },
-    ["Daneel.Event.RemoveEventListener"] = { { "object", "table" }, { "eventName", s }, { "listener", { f, u }, isOptional = true } },
-    ["GameObject.RemoveEventListener"] = { { "gameObject", "GameObject" }, { "eventName", s }, { "listener", { f, u }, isOptional = true } },
-} )
