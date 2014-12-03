@@ -12,8 +12,6 @@ Generator = {
         
         -- called from [Mater Level/Start] with the scripted behavior as first argument
         initFunction = function( masterLevelScript )
-        
-        
             if Generator.userSeed ~= nil and Generator.userSeed ~= "" then
                 Generator.SetPropertiesFromSeed()
             else
@@ -21,14 +19,13 @@ Generator = {
             end
             
             masterLevelScript.levelNameGO.textRenderer.text = Generator.seed
-            
-           
-            
+
             --do return end
-                    
+            
             Generator.Generate()
             
             masterLevelScript:ReparentNodes()
+            
             masterLevelScript:UpdateLevelCamera()
             
         end
@@ -41,8 +38,8 @@ Generator = {
 function Generator.Generate()     
     math.randomseed( tonumber(Generator.seed) )
     
-    -- grid
-
+    -- gri
+    
     -- Array of Vector2
     -- The components represents the positive offset of the node from the top right corner (which is 1,1)
     -- They are ordered in the array in the order they must be created for the rendering of the pillar to be OK
@@ -71,6 +68,7 @@ function Generator.Generate()
     local nodesParentGO = GameObject.Get("Level Root.Nodes")
     
     for i=1, #nodesOffsets do
+        
         local offset = nodesOffsets[i]
         offset = ( offset - Vector2(1) ) * 2
         
@@ -78,10 +76,8 @@ function Generator.Generate()
         table.insert( positions, position )
         
         local node = Scene.Append("Entities/Node", nodesParentGO)
-        node.transform.localPosition = position
+        node.transform.localPosition = Vector3(position)
     end
-
-
 end
 
 

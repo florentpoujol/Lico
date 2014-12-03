@@ -22,6 +22,9 @@ function InitIcons( iconGOs )
             iconGO.isInit = true
             
             local rendererGO = iconGO:GetChild("Renderer")
+            if rendererGO == nil then
+                print("no renderer GO on icon", iconGO)
+            end
             rendererGO:AddTag("ui")
             
             local tooltipGO = iconGO:GetChild("Tooltip")

@@ -1,9 +1,4 @@
 
-
-function Behavior:Awake()
-    
-end
-
 function Behavior:Start()
     
     -- grid size

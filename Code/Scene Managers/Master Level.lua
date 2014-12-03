@@ -3,7 +3,7 @@ function Behavior:Awake()
     local bg = Scene.Append("Main/Background")
     
     ---------
-    
+        
     SetRandomColors() -- set new random colors
     
     local uiMaskGO = GameObject.Get("UI Mask")
@@ -25,7 +25,6 @@ function Behavior:Awake()
         self:ReparentNodes()
     end
     -- when level is random, reparenting will be done when the node have been generated in Generator.initFunction()
-
 
     ----------
     -- Help/tutorial window
@@ -112,7 +111,6 @@ function Behavior:Awake()
             Scene.Load( Scene.current )
         end )
     end
-
     
     InitIcons() -- here to be called after InitWindow()
     
@@ -154,7 +152,6 @@ function Behavior:Awake()
     
     self.endLevelGO = GameObject.Get("End Level")
     self.endLevelGO.transform.localPosition = Vector3(0,-40,0)
-    
     
     --
     if not level.isRandom then

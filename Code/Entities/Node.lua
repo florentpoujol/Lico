@@ -29,14 +29,11 @@ function Behavior:Awake()
         realNode.name = name
         
         realNode.s.maxLinkCount = self.maxLinkCount
-                
         if self.colorName == "" and self.gameObject.modelRenderer ~= nil then
             self.colorName = self.gameObject.modelRenderer.model.name
         end
-        if self.colorName ~= "" then
-            realNode.s:Init(self.colorName)
-        end
-        
+        realNode.s:Init(self.colorName)
+             
         self.gameObject:Destroy()
         return
     end
@@ -58,12 +55,26 @@ function Behavior:Awake()
     self.linkGOs = {}
     
     self.frameCount = 0
+    
+    self.isInit = false
 end
 
 
 -- In practice, only called from a node placeholder Awake()
 function Behavior:Init( colorName )
-    self.gameObject:RemoveTag(self.colorName)
+    if self.isInit == true then
+        return
+    end
+    
+    if colorName == "" or colorName == nil then
+        if self.gameObject.modelRenderer ~= nil and self.gameObject.modelRenderer.model ~= nil then
+           colorName = self.gameObject.modelRenderer.model.name
+        else
+            error( "Node/Init(), no color name "..tostring(self.gameObject))   
+        end
+    end
+
+    self.gameObject:RemoveTag(colorName)
     self.gameObject:AddTag(colorName)
     self.colorName = colorName
     
@@ -122,6 +133,8 @@ function Behavior:Init( colorName )
     self.pillarGO.modelRenderer.opacity = 0.05
     --self.pillarGO.transform:Move(Vector3(0,-5,0))
     --self.pillarGO.transform.localScale = Vector3(1,10,1)
+    
+    self.isInit = true
 end
 
 
@@ -129,6 +142,10 @@ end
 
 function Behavior:Start()
     if not self.gameObject.isDestroyed then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
+        
+        if not self.isInit then
+            self:Init()
+        end
         
         -- by now all nodes of the level have been Init
         self:GetLinkableNodes()
@@ -357,16 +374,20 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
         if i <= nodeLinkCount then
             -- hide the link
             --go:Display(0)
-            if go.modelRenderer.opacity ~= 0 then
+            --f go.modelRenderer.opacity ~= 0 then
+            if not go.isHidden then
                 go:Animate("opacity", 0.5, 0.5, function(tweener) 
-                tweener.target.opacity = 0 
+                    tweener.target.opacity = 0 
                 end)
+                go.isHidden = true
             end
         else
-            if go.modelRenderer.opacity == 0 then
+            --if go.modelRenderer.opacity == 0 then
+            if go.isHidden == true then
                 --go:Display(01)
                 go.modelRenderer.opacity = 0.5
                 go:Animate("opacity", 0.01, 0.5)
+                go.isHidden = false
             end
         end
     end
@@ -460,3 +481,11 @@ function Behavior:Update()
         end
     end
 end
+
+
+table.mergein( Daneel.Debug.functionArgumentsInfo, {
+    ["GetLinkableNodes"] = { script = Behavior },
+    ["CanLink"] = { script = Behavior },
+} )
+
+Daneel.Debug.RegisterScript( Behavior )
