@@ -88,11 +88,13 @@ SetRandomColors()
 
 -------
 
-Daneel.UserConfig = {
-    debug = {
-        enableDebug = true,
-        enableStackTrace = true,
+function Daneel.UserConfig()
+    return {
+        debug = {
+            enableDebug = true,
+            enableStackTrace = true,
+        }
     }
-}
+end
 
 Color.colorAssetsFolder = "Flat Nodes/" -- also set/reset several times in [Node/Init]

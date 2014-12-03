@@ -1,3 +1,5 @@
+
+-- Generated on Tue Dec 02 2014 21:48:42 GMT+0100 (Paris, Madrid)
 -- Lua.lua
 -- Contains extensions of Lua's libraries.
 -- All functions in this file are totally independant from Daneel or CraftStudio, they can be reused in any Lua application.
@@ -57,15 +59,28 @@ function math.warpangle( angle )
     return angle
 end
 
---- Return the value rounded to the closest integer or decimal.
--- @param value (number) The value.
+--- Round the value to the closest integer or decimal.
+-- @param value (number) The value to round.
 -- @param decimal (number) [default=0] The decimal at which to round the value.
--- @return (number) The new value.
+-- @return (number) The rounded value.
 function math.round( value, decimal )
     if decimal ~= nil then
         value = math.floor( (value * 10^decimal) + 0.5) / (10^decimal)
     else
         value = math.floor( value + 0.5 )
+    end
+    return value
+end
+
+--- Trucate the value to the provided decimal.
+-- @param value (number) The value to truncate.
+-- @param decimal (number) [default=0] The decimal at which to truncate the value.
+-- @return (number) The truncated value.
+function math.truncate( value, decimal )
+    if decimal ~= nil then
+        value = math.floor( (value * 10^decimal) ) / (10^decimal)
+    else
+        value = math.floor( value )
     end
     return value
 end
@@ -98,7 +113,6 @@ function math.clamp( value, min, max )
     value = math.min( value, max )
     return value
 end
-
 
 ----------------------------------------------------------------------------------
 -- string
@@ -252,6 +266,23 @@ function string.reverse( s )
     return ns
 end
 
+--- Make sure that the case of the provided string is correct by checking it against the values in the provided set.
+-- @param s (string) The string to check the case of.
+-- @param set (string or table) A single value or a table of values to check the string against.
+-- @return (string) The string with the corrected case.
+function string.fixcase( s, set )
+    if type( set ) == "string" then
+        set = { set }
+    end
+    local ls = s:lower()
+    for i=1, #set do
+        local item = set[i]
+        if ls == item:lower() then
+            return item
+        end
+    end
+    return s -- in case no match is found the set
+end
 
 ----------------------------------------------------------------------------------
 -- table
@@ -361,24 +392,22 @@ local currentlyPrintedTable = nil
 --- Recursively print all key/value pairs within the provided table.
 -- Fully prints the tables that have no metatable found as values.
 -- @param t (table) The table to print.
--- @param level (string) [default=""] The string to prepend to the printed lines. Should be empty or nil unless called from table.rprint().
-function table.rprint( t, level )
+-- @param level (string) [default=""] The string to prepend to the printed lines. Should be empty or nil unless called from table.printr().
+function table.printr( t, level )
     level = level or ""
 
     if t == nil then
-        print(level.."table.rprint( t ) : Provided table is nil.")
+        print(level.."table.printr( t ) : Provided table is nil.")
         return
     end
 
     if level == "" then
-        print("~~~~~ table.rprint("..tostring(t)..") ~~~~~ Start ~~~~~")
-        
-    end
-    
-    if currentlyPrintedTable  == nil then
-    currentlyPrintedTable = t
-       end
---knownKeysByPrintedTable[ t ] = ""
+        print("~~~~~ table.printr("..tostring(t)..") ~~~~~ Start ~~~~~")       
+        if currentlyPrintedTable == nil then
+          currentlyPrintedTable = t
+        end
+    end   
+
     local func = pairs
     if table.getlength(t) == 0 then
         print(level, "Table is empty.")
@@ -397,16 +426,13 @@ function table.rprint( t, level )
         if type( value ) == "table" and getmetatable( value ) == nil then
             local knownKey = knownKeysByPrintedTable[ value ]
             if value == currentlyPrintedTable then
-            print(level..tostring(key), "Table currently being printed: "..tostring(value) )
-            
+                print(level..tostring(key), "Table currently being printed: "..tostring(value) )
             elseif knownKey ~= nil then
                 print(level..tostring(key), "Already printed table with key "..knownKey..": "..tostring(value) )
-            --elseif value == t then
-                
             else
                 knownKeysByPrintedTable[ value ] = key
                 print(level..tostring(key), value)
-                table.rprint( value, level.."| - - - ")
+                table.printr( value, level.."| - - - ")
             end
         else
             print(level..tostring(key), value)
@@ -414,7 +440,7 @@ function table.rprint( t, level )
     end
 
     if level == "" then
-        print("~~~~~ table.rprint("..tostring(t)..") ~~~~~ End ~~~~~")
+        print("~~~~~ table.printr("..tostring(t)..") ~~~~~ End ~~~~~")
         knownKeysByPrintedTable = {}
         currentlyPrintedTable = nil
     end
@@ -610,7 +636,7 @@ end
 -- Ie for this series of nested table : table1.table2.table3.fooBar <br>
 -- table.getvalue( table1, "table2.table3.fooBar" ) would return the value of the 'fooBar' key in the 'table3' table <br>
 -- table.getvalue( table1, "table2.table3" ) would return the value of 'table3' <br>
--- table.getvalue( table1, "table2.table3.Foo" ) would return nul because the 'table3' has no 'Foo' key <br>
+-- table.getvalue( table1, "table2.table3.Foo" ) would return nil because the 'table3' has no 'Foo' key <br>
 -- table.getvalue( table1, "table2.Foo.Bar.Lorem.Ipsum" ) idem <br>
 -- @param t (table) The table.
 -- @param keys (string) The chain of keys to looks for as a string, each keys separated by a dot.
@@ -697,8 +723,8 @@ end
 -- @return (table) The new table.
 function table.reverse( t )
     local newTable = {}
-    for i, v in ipairs( t ) do
-        table.insert( newTable, 1, v )
+    for i=1, #t do
+        table.insert( newTable, 1, t[i] )
     end
     return newTable
 end
@@ -713,10 +739,8 @@ function table.shift( t, returnKey )
     local value = nil
     if table.isarray( t ) then
         if #t > 0 then
-            value = table.removevalue( t, 1 )
-            if value ~= nil then -- should always be ~= nil if #t > 0
-                key = 1
-            end
+            key = 1
+            value = table.remove( t, 1 )
         end
     else
         for k,v in pairs( t ) do
@@ -728,7 +752,7 @@ function table.shift( t, returnKey )
             t[ key ] = nil  
         end
     end
-    if returnKey then
+    if returnKey == true then
         return key, value
     else
         return value
@@ -868,11 +892,6 @@ function string.split( s, delimiter, delimiterIsPattern )
     return chunks
 end
 
--- Deprecated since v1.4.0
-function table.deepmerge( ... )
-    return table.merge( ..., true )
-end
-
 function table.print(t)
     if t == nil then
         print("table.print( t ) : Provided table is nil.")
@@ -917,29 +936,13 @@ function table.getlength( t, keyType )
     return length
 end
 
-
 ----------------------------------------------------------------------------------
 -- Utilities
 
 Daneel.Utilities = {}
 
---- Make sure that the case of the provided string is correct by checking it against the values in the provided set.
--- @param s (string) The string to check the case of.
--- @param set (string or table) A single value or a table of values to check the string against.
--- @return (string) The string with the corrected case.
-function Daneel.Utilities.CaseProof( s, set )
-    if type( set ) == "string" then
-        set = { set }
-    end
-    local ls = s:lower()
-    for i, item in pairs( set ) do
-        if ls == item:lower() then
-            s = item
-            break
-        end
-    end
-    return s
-end
+-- Deprecated since v1.5.0
+Daneel.Utilities.CaseProof = string.fixcase
 
 --- Replace placeholders in the provided string with their corresponding provided replacements.
 -- The placeholders are any piece of string prefixed by a semicolon.
@@ -1039,7 +1042,6 @@ function Daneel.Utilities.ButtonExists( buttonName )
     return buttonExists[ buttonName ]
 end
 
-
 Daneel.Utilities.id = 0
 
 --- Returns an integer greater than 0 and incremented by 1 from the last time the function was called.
@@ -1075,7 +1077,6 @@ Daneel.Cache = {
     GetId = Daneel.Utilities.GetId
 }
 
-
 ----------------------------------------------------------------------------------
 -- Debug
 
@@ -1100,10 +1101,8 @@ Daneel.Debug.functionArgumentsInfo = {
         { "easing", s, isOptional = true }
     },
     ["math.warpangle"] = { { "angle", n } },
-    ["math.round"] = {
-        { "value", n },
-        { "decimal", n, isOptional = true }
-    },
+    ["math.round"] = { { "value", n }, { "decimal", n, isOptional = true } },
+    ["math.truncate"] = { { "value", n }, { "decimal", n, isOptional = true } },
     ["tonumber2"] = { { "data" } },
     ["math.clamp"] = { { "value", n }, { "min", n }, { "max", n } },
 
@@ -1120,6 +1119,7 @@ Daneel.Debug.functionArgumentsInfo = {
         { "delimiterIsPattern", b, defaultValue = false },
     },
     ["string.reverse"] = { _s },
+    ["string.fixcase"] = { _s, { "set", { s, t } } },
 
     ["table.print"] = {}, -- just for the stacktrace
     ["table.merge"] = {},
@@ -1150,11 +1150,9 @@ Daneel.Debug.functionArgumentsInfo = {
         { "orderBy", s, isOptional = true },
     },
 
-    ["Daneel.Utilities.CaseProof"] = { { "name", s }, { "set", { s, t } } },
     ["Daneel.Utilities.ReplaceInString"] = { { "string", s }, { "replacements", t } },
     ["Daneel.Utilities.ButtonExists"] = { { "buttonName", s } }
 }
-
 
 --- Check the provided argument's type against the provided type(s) and display error if they don't match.
 -- @param argument (mixed) The argument to check.
@@ -1272,8 +1270,8 @@ function Daneel.Debug.GetType( object, luaTypeOnly )
                 return "ScriptedBehavior"
             end
 
-            if Daneel.Config.objects ~= nil then
-                for type, object in pairs( Daneel.Config.objects ) do
+            if Daneel.Config.objectsByType ~= nil then
+                for type, object in pairs( Daneel.Config.objectsByType ) do
                     if mt == object then
                         return type
                     end
@@ -1354,7 +1352,7 @@ function Daneel.Debug.GetNameFromValue(value)
     if value == nil then
         error(errorHead.." Argument 'value' is nil.")
     end
-    local result = table.getkey(Daneel.Config.objects, value)
+    local result = table.getkey(Daneel.Config.objectsByType, value)
     if result == nil then
         result = table.getkey(_G, value)
     end
@@ -1522,7 +1520,6 @@ function Daneel.Debug.RegisterFunction( name, argsData )
     end
 end
 
-
 ----------------------------------------------------------------------------------
 -- StackTrace
 
@@ -1606,12 +1603,11 @@ function Daneel.Debug.StackTrace.Print()
     end
 end
 
-
 ----------------------------------------------------------------------------------
 -- Event
 
 Daneel.Event = {
-    events = {}, -- emptied when a new scene is loaded in CraftStudio.LoadScene()
+    events = {}, -- listeners by events - emptied when a new scene is loaded in CraftStudio.LoadScene()
     persistentEvents = {}, -- not emptied
 }
 
@@ -1642,7 +1638,7 @@ function Daneel.Event.Listen( eventName, functionOrObject, isPersistent )
             -- check that the persistent listener is not a game object or a component (that are always destroyed when the scene loads)
             if isPersistent and listenerType == "table" then
                 local mt = getmetatable( functionOrObject )
-                if mt ~= nil and mt == GameObject or table.containsvalue( Daneel.Config.componentObjects, mt ) then
+                if mt ~= nil and mt == GameObject or table.containsvalue( Daneel.Config.componentObjectsByType, mt ) then
                     if Daneel.Config.debug.enableDebug then
                         print( errorHead.."Game objects and components can't be persistent listeners", functionOrObject )
                     end
@@ -1709,15 +1705,15 @@ function Daneel.Event.Fire( object, eventName, ... )
     local errorHead = "Daneel.Event.Fire( [object, ]eventName[, ...] ) : "
 
     local argType = type( object )
-    if argType == "string" or argType == "nil" then -- checking for nil because argument can be expressly omitted when just supplying the eventName
+    if argType == "string" then
         -- no object provided, fire on the listeners
         if eventName ~= nil then
             table.insert( arg, 1, eventName )
         end
         eventName = object
         object = nil
-
-    else
+    
+    elseif argType ~= "nil" then
         Daneel.Debug.CheckArgType( object, "object", "table", errorHead )
         Daneel.Debug.CheckArgType( eventName, "eventName", "string", errorHead )
     end
@@ -1734,7 +1730,8 @@ function Daneel.Event.Fire( object, eventName, ... )
     end
 
     local listenersToBeRemoved = {}
-    for i, listener in ipairs( listeners ) do
+    for i=1, #listeners do
+        local listener = listeners[i]
 
         local listenerType = type( listener )
         if listenerType == "function" or listenerType == "userdata" then
@@ -1749,44 +1746,116 @@ function Daneel.Event.Fire( object, eventName, ... )
                 listenerIsAlive = false
             end
             if listenerIsAlive then -- ensure that the event is not fired on a dead game object or component
-                local message = eventName
+                local functions = {} -- list of listener functions attached to this object
+                if listener.listenersByEvent ~= nil and listener.listenersByEvent[ eventName ] ~= nil then
+                    functions = listener.listenersByEvent[ eventName ]
+                end
 
-                -- look for the value of the EventName property on the object
-                local funcOrMessage = rawget( listener, eventName )
+                -- Look for the value of the EventName property on the object
+                local func = rawget( listener, eventName )
                 -- Using rawget() prevent a 'Behavior function' to be called as a regular function when the listener is a ScriptedBehavior
                 -- because the function exists on the Script object and not on the ScriptedBehavior (the listener),
                 -- in which case rawget() returns nil
-
-                local _type = type( funcOrMessage )
-                if _type == "function" or _type == "userdata" then
-                    if funcOrMessage( unpack( arg ) ) == false then
-                        table.insert( listenersToBeRemoved, listener )
-                    end
-                elseif _type == "string" then
-                    message = funcOrMessage
+                if func ~= nil then
+                    table.insert( functions, func )
                 end
 
-                -- always try to send the message, even when funcOrMessage was a function
+                -- call all listener functions
+                for j=1, #functions do
+                    functions[j]( ... )
+                end
+
+                -- always try to send the message if the object is a game object
                 if mt == GameObject then
-                    listener:SendMessage( message, arg )
+                    local go = arg[1]
+                    if go == listener then
+                        -- don't send the first argument when it is the listener game
+                        table.remove( arg, 1 )
+                    end
+                    if #arg == 1 and type( arg[1] ) == "table" then
+                        -- directly send the table if there is no other argument
+                        arg = arg[1]
+                    end
+                    listener:SendMessage( eventName, arg )
                 end
             end
         end
 
     end -- end for listeners
 
-    if #listenersToBeRemoved > 0 then
-        for i, listener in pairs( listenersToBeRemoved ) do
-            Daneel.Event.StopListen( eventName, listener )
-        end
+    
+    for i=1, #listenersToBeRemoved do
+        Daneel.Event.StopListen( eventName, listenersToBeRemoved[i] )
     end
     Daneel.Debug.StackTrace.EndFunction()
 end
 
+--- Fire an event at the provided game object.
+-- @param gameObject (GameObject) The game object.
+-- @param eventName (string) The event name.
+-- @param ... [optional] Some arguments to pass along.
+function GameObject.FireEvent( gameObject, eventName, ... )
+    Daneel.Event.Fire( gameObject, eventName, ... )
+end
+
+--- Add a listener function for the specified local event on this object.
+-- @param object (table) The object.
+-- @param eventName (string) The name of the event to listen to.
+-- @param listener (function or userdata) The listener function.
+function Daneel.Event.AddEventListener( object, eventName, listener )
+    if object.listenersByEvent == nil then
+        object.listenersByEvent = {}
+    end
+    if object.listenersByEvent[ eventName ] == nil then
+        object.listenersByEvent[ eventName ] = {}
+    end
+    if not table.containsvalue( object.listenersByEvent[ eventName ], listener ) then
+        table.insert( object.listenersByEvent[ eventName ], listener )
+    elseif Daneel.Debug.enableDebug == true then
+        print("Daneel.Event.AddEventListener(): "..tostring(listener).." already listen for event '"..eventName.."' on object: ", object)
+    end
+end
+
+--- Add a listener function for the specified local event on this game object.
+-- Alias of Daneel.Event.AddEventListener().
+-- @param gameObject (GameObject) The game object.
+-- @param eventName (string) The name of the event to listen to.
+-- @param listener (function or userdata) The listener function.
+function GameObject.AddEventListener( gameObject, eventName, listener )
+    Daneel.Event.AddEventListener( gameObject, eventName, listener )
+end
+
+--- Remove the specified listener for the specified local event on this object
+-- @param object (table) The object.
+-- @param eventName (string) The name of the event.
+-- @param listener (function or userdata) [optional] The listener function to remove. If nil, all listeners will be removed for the specified event.
+function Daneel.Event.RemoveEventListener( object, eventName, listener )
+    if object.listenersByEvent ~= nil and object.listenersByEvent[ eventName ] ~= nil then
+        if listener ~= nil then
+            table.removevalue( object.listenersByEvent[ eventName ], listener )
+        else
+            object.listenersByEvent[ eventName ] = nil
+        end
+    end
+end
+
+--- Remove the specified listener for the specified local event on this game object
+-- @param gameObject (table) The game object.
+-- @param eventName (string) The name of the event.
+-- @param listener (function or userdata) [optional] The listener function to remove. If nil, all listeners will be removed for the specified event.
+function GameObject.RemoveEventListener( gameObject, eventName, listener )
+    Daneel.Event.RemoveEventListener( gameObject, eventName, listener )
+end
+
+local _go = { "gameObject", "GameObject" }
 table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["Daneel.Event.Listen"] = { { "eventName", { s, t } }, { "functionOrObject", {t, f, u} }, { "isPersistent", defaultValue = false } },
+    ["GameObject.FireEvent"] = { _go, { "eventName", s } },
+    ["Daneel.Event.AddEventListener"] = { { "object", "table" }, { "eventName", s }, { "listener", { f, u } } },
+    ["GameObject.AddEventListener"] =   { _go, { "eventName", s }, { "listener", { f, u } } },
+    ["Daneel.Event.RemoveEventListener"] = { { "object", "table" }, { "eventName", s }, { "listener", { f, u }, isOptional = true } },
+    ["GameObject.RemoveEventListener"] = { _go, { "eventName", s }, { "listener", { f, u }, isOptional = true } },
 } )
-
 
 ----------------------------------------------------------------------------------
 -- Time
@@ -1802,85 +1871,6 @@ Daneel.Time = {
     frameCount = 0,
 }
 
-
-----------------------------------------------------------------------------------
--- Storage
-
-Daneel.Storage = {}
-
---- Store locally on the computer the provided data under the provided name.
--- @param name (string) The name of the data.
--- @param data (mixed) The data to store. May be nil.
--- @param callback (function) [optional] The function called when the save has completed. The potential error (as a string) is passed to the callback first and only argument (nil if no error).
-function Daneel.Storage.Save( name, data, callback )
-    if data ~= nil and type( data ) ~= "table" then
-        data = {
-            value = data,
-            isSavedByDaneel = true
-        }
-    end
-    CS.Storage.Save( name, data, function( error )
-        if error ~= nil then
-            if Daneel.Config.debug.enableDebug then
-                print( "Daneel.Storage.Save( name, data[, callback] ) : Error saving with name, data and error : ", name, data, error.message )
-            end
-        end
-
-        if callback ~= nil then
-            if error == nil then
-                error = {}
-            end
-            callback( error.message )
-        end
-    end )
-end
-
---- Load data stored locally on the computer under the provided name. The load operation may not be instantaneous.
--- The function will return the queried value (or defaultValue) if it completes right away, otherwise it returns nil.
--- @param name (string) The name of the data.
--- @param defaultValue (mixed) [optional] The value that is returned if no data is found.
--- @param callback (function) [optional] The function called when the data is loaded. The value and the potential error (as a string) (ni if no error) are passed as first and second argument, respectively.
--- @return (mixed) The data.
-function Daneel.Storage.Load( name, defaultValue, callback )
-    if callback == nil and type( defaultValue ) == "function" then
-        callback = defaultValue
-        defaultValue = nil
-    end
-    local value = nil
-    CS.Storage.Load( name, function( error, data )
-        if error ~= nil then
-            if Daneel.Config.debug.enableDebug then
-                print( "Daneel.Storage.Load( name[, defaultValue, callback] ) : Error loading with name, default value and error", name, defaultValue, error.message )
-            end
-            data = nil
-        end
-
-        value = defaultValue
-
-        if data ~= nil then
-            if type( data ) == "table" and data.value ~= nil and data.isSavedByDaneel then
-                value = data.value
-            else
-                value = data
-            end
-        end
-
-        if callback ~= nil then
-            if error == nil then
-                error = {}
-            end
-            callback( value, error.message )
-        end
-    end )
-    return value
-end
-
-table.mergein( Daneel.Debug.functionArgumentsInfo, {
-    ["Daneel.Storage.Save"] = { { "name", s }, { "data", isOptional = true }, { "callback", "function", isOptional = true } },
-    ["Daneel.Storage.Load"] = { { "name", s }, { "defaultValue", isOptional = true }, { "callback", "function", isOptional = true } }
-} )
-
-
 ----------------------------------------------------------------------------------
 -- Config, loading
 
@@ -1891,10 +1881,8 @@ function Daneel.DefaultConfig()
             enableStackTrace = false, -- Enable/disable the Stack Trace.
         },
 
-        -- Default CraftStudio's components settings (except Transform)
-        -- textRenderer = { font = "MyFont" },
-
-        objects = {
+        -- this table define the object's type names, returned by Daneel.Debug.GetType()
+        objectsByType = {
             GameObject = GameObject,
             Vector3 = Vector3,
             Quaternion = Quaternion,
@@ -1902,7 +1890,7 @@ function Daneel.DefaultConfig()
             Ray = Ray,
         },
 
-        componentObjects = {
+        componentObjectsByType = {
             ScriptedBehavior = ScriptedBehavior,
             ModelRenderer = ModelRenderer,
             MapRenderer = MapRenderer,
@@ -1914,7 +1902,7 @@ function Daneel.DefaultConfig()
         },
         componentTypes = {},
 
-        assetObjects = {
+        assetObjectsByType = {
             Script = Script,
             Model = Model,
             ModelAnimation = ModelAnimation,
@@ -1931,7 +1919,7 @@ function Daneel.DefaultConfig()
     return config
 end
 Daneel.Config = Daneel.DefaultConfig()
-Daneel.Config.assetTypes = table.getkeys( Daneel.Config.assetObjects ) -- needed in the CraftStudio script before Daneel is loaded
+Daneel.Config.assetTypes = table.getkeys( Daneel.Config.assetObjectsByType ) -- needed in the CraftStudio script before Daneel is loaded
 
 -- load Daneel at the start of the game
 function Daneel.Load()
@@ -1939,12 +1927,9 @@ function Daneel.Load()
     Daneel.isLoading = true
 
     -- load Daneel config
-    local userConfig = Daneel.UserConfig
-    if type( userConfig ) == "function" then
-        userConfig = userConfig()
-    end
-    if userConfig ~= nil then
-        table.mergein( Daneel.Config, userConfig, true )
+    local userConfig = nil
+    if Daneel.UserConfig ~= nil then
+        table.mergein( Daneel.Config, Daneel.UserConfig(), true )
     end
 
     -- load modules config
@@ -1955,39 +1940,32 @@ function Daneel.Load()
             module.isConfigLoaded = true
 
             if module.Config == nil then
-                local config = module.DefaultConfig
-                if type( config ) == "function" then
-                    config = config()
+                if module.DefaultConfig ~= nil then
+                    module.Config = module.DefaultConfig()
+                else
+                    module.Config = {}
                 end
-                if config == nil then
-                    config = {}
-                end
-                module.Config = config
             end
 
-            local userConfig = module.UserConfig
-            if type( userConfig ) == "function" then
-                userConfig = userConfig()
-            end
-            if userConfig ~= nil then
-                table.mergein( module.Config, userConfig, true )
+            if module.UserConfig ~= nil then
+                table.mergein( module.Config, module.UserConfig(), true )
             end
 
-            if module.Config.objects ~= nil then
-                table.mergein( Daneel.Config.objects, module.Config.objects )
+            if module.Config.objectsByType ~= nil then
+                table.mergein( Daneel.Config.objectsByType, module.Config.objectsByType )
             end
 
-            if module.Config.componentObjects ~= nil then
-                table.mergein( Daneel.Config.componentObjects, module.Config.componentObjects )
-                table.mergein( Daneel.Config.objects, module.Config.componentObjects )
+            if module.Config.componentObjectsByType ~= nil then
+                table.mergein( Daneel.Config.componentObjectsByType, module.Config.componentObjectsByType )
+                table.mergein( Daneel.Config.objectsByType, module.Config.componentObjectsByType )
             end
         end
     end
 
-    table.mergein( Daneel.Config.objects, Daneel.Config.componentObjects, Daneel.Config.assetObjects )
+    table.mergein( Daneel.Config.objectsByType, Daneel.Config.componentObjectsByType, Daneel.Config.assetObjectsByType )
 
     -- Enable nice printing + dynamic access of getters/setters on components
-    for componentType, componentObject in pairs( Daneel.Config.componentObjects ) do
+    for componentType, componentObject in pairs( Daneel.Config.componentObjectsByType ) do
         Daneel.Utilities.AllowDynamicGettersAndSetters( componentObject, { Component } )
 
         if componentType ~= "ScriptedBehavior" then
@@ -1997,7 +1975,7 @@ function Daneel.Load()
         end
     end
 
-    table.mergein( Daneel.Config.componentTypes, table.getkeys( Daneel.Config.componentObjects ) )
+    table.mergein( Daneel.Config.componentTypes, table.getkeys( Daneel.Config.componentObjectsByType ) )
 
     if Daneel.Config.debug.enableDebug then
         if Daneel.Config.debug.enableStackTrace then
@@ -2011,7 +1989,7 @@ function Daneel.Load()
     end
 
     -- Enable nice printing + dynamic access of getters/setters on assets
-    for assetType, assetObject in pairs( Daneel.Config.assetObjects ) do
+    for assetType, assetObject in pairs( Daneel.Config.assetObjectsByType ) do
         Daneel.Utilities.AllowDynamicGettersAndSetters( assetObject, { Asset } )
 
         assetObject["__tostring"] = function( asset )
@@ -2054,7 +2032,6 @@ function Daneel.Load()
     Daneel.Debug.StackTrace.EndFunction()
 end -- end Daneel.Load()
 
-
 ----------------------------------------------------------------------------------
 -- Runtime
 
@@ -2081,7 +2058,7 @@ function Behavior.Awake( self )
         return
     end
     Daneel.isAwake = true
-    Daneel.Event.Listen( "OnSceneLoad", function() Daneel.isAwake = false end )
+    Daneel.Event.Listen( "OnNewSceneWillLoad", function() Daneel.isAwake = false end )
 
     Daneel.Load()
     Daneel.Debug.StackTrace.messages = {}
@@ -2149,6 +2126,647 @@ function Behavior.Update( self )
     end
 end
 
+--------------------------------------------------------------------------------
+-- Mouse Input component
+-- Enable mouse interactions with game objects when added to a game object with a camera component.
+
+MouseInput = { 
+    buttonExists = { LeftMouse = false, RightMouse = false, WheelUp = false, WheelDown = false },
+    
+    frameCount = 0,
+    lastLeftClickFrame = 0,
+
+    components = {}, -- array of mouse input components
+}
+Daneel.modules.MouseInput = MouseInput
+
+function MouseInput.DefaultConfig()
+    return {
+        doubleClickDelay = 20, -- Maximum number of frames between two clicks of the left mouse button to be considered as a double click
+
+        componentObjectsByType = {
+            MouseInput = MouseInput,
+        },
+    }
+end
+MouseInput.Config = MouseInput.DefaultConfig()
+
+function MouseInput.Load()
+    for buttonName, _ in pairs( MouseInput.buttonExists ) do
+        MouseInput.buttonExists[ buttonName ] = Daneel.Utilities.ButtonExists( buttonName )
+    end
+
+    MouseInput.lastLeftClickFrame = -MouseInput.Config.doubleClickDelay
+end
+
+function MouseInput.Awake()
+    MouseInput.components = {}
+end
+
+-- Loop on the MouseInput.components.
+-- Works with the game objects that have at least one of the component's tag.
+-- Check the position of the mouse against these game objects.
+-- Fire events accordingly.
+function MouseInput.Update()
+    MouseInput.frameCount = MouseInput.frameCount + 1
+    
+    local mouseDelta = CS.Input.GetMouseDelta()
+    local mouseIsMoving = false
+    if mouseDelta.x ~= 0 or mouseDelta.y ~= 0 then
+        mouseIsMoving = true
+    end
+
+    local leftMouseJustPressed = false
+    local leftMouseDown = false
+    local leftMouseJustReleased = false
+    if MouseInput.buttonExists.LeftMouse then
+        leftMouseJustPressed = CS.Input.WasButtonJustPressed( "LeftMouse" )
+        leftMouseDown = CS.Input.IsButtonDown( "LeftMouse" )
+        leftMouseJustReleased = CS.Input.WasButtonJustReleased( "LeftMouse" )
+    end
+
+    local rightMouseJustPressed = false
+    if MouseInput.buttonExists.RightMouse then
+        rightMouseJustPressed = CS.Input.WasButtonJustPressed( "RightMouse" )
+    end
+
+    local wheelUpJustPressed = false
+    if MouseInput.buttonExists.WheelUp then
+        wheelUpJustPressed = CS.Input.WasButtonJustPressed( "WheelUp" )
+    end
+
+    local wheelDownJustPressed = false
+    if MouseInput.buttonExists.WheelDown then
+        wheelDownJustPressed = CS.Input.WasButtonJustPressed( "WheelDown" )
+    end
+    
+    if 
+        mouseIsMoving == true or
+        leftMouseJustPressed == true or 
+        leftMouseDown == true or
+        leftMouseJustReleased == true or 
+        rightMouseJustPressed == true or
+        wheelUpJustPressed == true or
+        wheelDownJustPressed == true
+    then
+        local doubleClick = false
+        if leftMouseJustPressed then
+            doubleClick = ( MouseInput.frameCount <= MouseInput.lastLeftClickFrame + MouseInput.Config.doubleClickDelay )   
+            MouseInput.lastLeftClickFrame = MouseInput.frameCount
+        end
+
+        local reindexComponents = false
+        local reindexGameObjects = false
+
+        for i=1, #MouseInput.components do
+            local component = MouseInput.components[i]
+            local mi_gameObject = component.gameObject -- mouse input game object
+
+            if mi_gameObject.inner ~= nil and not mi_gameObject.isDestroyed and mi_gameObject.camera ~= nil then
+                local ray = mi_gameObject.camera:CreateRay( CS.Input.GetMousePosition() )
+                
+                for j=1, #component._tags do
+                    local tag = component._tags[j]
+                    local gameObjects = GameObject.Tags[ tag ]
+                    if gameObjects ~= nil then
+
+                        for k=1, #gameObjects do
+                            local gameObject = gameObjects[k]
+                            -- gameObject is the game object whose position is checked against the raycasthit
+                            if gameObject.inner ~= nil and not gameObject.isDestroyed then
+                                
+                                local raycastHit = ray:IntersectsGameObject( gameObject )
+                                if raycastHit ~= nil then
+                                    -- the mouse pointer is over the gameObject
+                                    if not gameObject.isMouseOver then
+                                        gameObject.isMouseOver = true
+                                        Daneel.Event.Fire( gameObject, "OnMouseEnter", gameObject )
+                                    end
+
+                                elseif gameObject.isMouseOver == true then
+                                    -- the gameObject was still hovered the last frame
+                                    gameObject.isMouseOver = false
+                                    Daneel.Event.Fire( gameObject, "OnMouseExit", gameObject )
+                                end
+                                
+                                if gameObject.isMouseOver == true then
+                                    Daneel.Event.Fire( gameObject, "OnMouseOver", gameObject, raycastHit )
+
+                                    if leftMouseJustPressed == true then
+                                        Daneel.Event.Fire( gameObject, "OnClick", gameObject )
+
+                                        if doubleClick == true then
+                                            Daneel.Event.Fire( gameObject, "OnDoubleClick", gameObject )
+                                        end
+                                    end
+
+                                    if leftMouseDown == true and mouseIsMoving == true then
+                                        Daneel.Event.Fire( gameObject, "OnDrag", gameObject )
+                                    end
+
+                                    if leftMouseJustReleased == true then
+                                        Daneel.Event.Fire( gameObject, "OnLeftClickReleased", gameObject )
+                                    end
+
+                                    if rightMouseJustPressed == true then
+                                        Daneel.Event.Fire( gameObject, "OnRightClick", gameObject )
+                                    end
+
+                                    if wheelUpJustPressed == true then
+                                        Daneel.Event.Fire( gameObject, "OnWheelUp", gameObject )
+                                    end
+                                    if wheelDownJustPressed == true then
+                                        Daneel.Event.Fire( gameObject, "OnWheelDown", gameObject )
+                                    end
+                                end
+                            else 
+                                -- gameObject is dead
+                                gameObjects[ i ] = nil
+                                reindexGameObjects = true
+                            end
+                        end -- for gameObjects with current tag
+
+                        if reindexGameObjects == true then
+                            GameObject.Tags[ tag ] = table.reindex( gameObjects )
+                            reindexGameObjects = false
+                        end
+                    end -- if some game objects have this tag
+                end -- for component._tags
+            else
+                -- this component's game object is dead or has no camera component
+                MouseInput.components[i] = nil
+                reindexComponents = true
+            end -- gameObject is alive
+        end -- for MouseInput.components
+
+        if reindexComponents == true then
+            table.reindex( MouseInput.components )
+        end
+    end -- if mouseIsMoving, ...
+end -- end MouseInput.Update() 
+
+--- Create a new MouseInput component.
+-- @param gameObject (GameObject) The game object.
+-- @param params (table) [optional] A table of parameters.
+-- @return (MouseInput) The new component.
+function MouseInput.New( gameObject, params )
+    if gameObject.camera == nil then
+        error( "MouseInput.New(gameObject, params) : "..tostring(gameObject).." has no Camera component." )
+        return
+    end
+
+    local component = { _tags = {} }
+    component.gameObject = gameObject
+    gameObject.mouseInput = component
+    setmetatable( component, MouseInput )  
+    if params ~= nil then
+        component:Set( params )
+    end
+
+    table.insert( MouseInput.components, component )
+    return component
+end
+
+--- Set tag(s) of the game objects the component works with.
+-- @param mouseInput (MouseInput) The mouse input component.
+-- @param tags (string or table) The tag(s) of the game objects the component works with.
+function MouseInput.SetTags( mouseInput, tags )
+    if type( tags ) == "string" then
+        tags = {tags}
+    end
+    mouseInput._tags = tags
+end
+
+--- Return the tag(s) of the game objects the component works with.
+-- @param mouseInput (MouseInput) The mouse input component.
+-- @return (table) The tag(s) of the game objects the component works with.
+function MouseInput.GetTags( mouseInput )
+    return mouseInput._tags
+end
+
+local _mo = { "mouseInput", "MouseInput" }
+table.mergein( Daneel.Debug.functionArgumentsInfo, {
+    ["MouseInput.New"] = { _go, { "params", "table", isOptional = true } },
+    ["MouseInput.SetTags"] = { _mo, { "tags", { s, t } } },
+    ["MouseInput.GetTags"] = { _mo },
+} )
+
+--------------------------------------------------------------------------------
+-- Trigger component
+
+Trigger = {
+    frameCount = 0,
+    triggerComponents = {},
+}
+Daneel.modules.Trigger = Trigger
+
+function Trigger.DefaultConfig()
+    return {
+        componentObjectsByType = {
+            Trigger = Trigger,
+        },
+    }
+end
+Trigger.Config = Trigger.DefaultConfig()
+
+function Trigger.Awake()
+    Trigger.triggerComponents = {}
+end
+
+function Trigger.Update()
+    Trigger.frameCount = Trigger.frameCount + 1
+    local reindexComponents = false
+
+    for i=1, #Trigger.triggerComponents do
+        local trigger = Trigger.triggerComponents[i]
+        local triggerGameObject = trigger.gameObject
+
+        if triggerGameObject.inner ~= nil and not triggerGameObject.isDestroyed then
+            if trigger._updateInterval > 1 and Trigger.frameCount % trigger._updateInterval == 0 then
+                local triggerPosition = triggerGameObject.transform:GetPosition()
+                
+                for j=1, #trigger._tags do
+                    local tag = trigger._tags[j]
+                    local gameObjects = GameObject.Tags[ tag ]
+                    if gameObjects ~= nil then
+
+                        for k=1, #gameObjects do
+                            local gameObject = gameObjects[k]
+                            -- gameObject is the game object whose position is checked against the trigger's
+                            if gameObject.inner ~= nil and not gameObject.isDestroyed and gameObject ~= triggerGameObject then    
+
+                                local gameObjectIsInRange = trigger:IsGameObjectInRange( gameObject, triggerPosition )
+                                local gameObjectWasInRange = table.containsvalue( trigger.gameObjectsInRangeLastUpdate, gameObject )
+
+                                if gameObjectIsInRange then
+                                    if gameObjectWasInRange then
+                                        -- already in this trigger
+                                        Daneel.Event.Fire( gameObject, "OnTriggerStay", gameObject, triggerGameObject )
+                                        Daneel.Event.Fire( triggerGameObject, "OnTriggerStay", triggerGameObject, gameObject )
+                                    else
+                                        -- just entered the trigger
+                                        table.insert( trigger.gameObjectsInRangeLastUpdate, gameObject )
+                                        Daneel.Event.Fire( gameObject, "OnTriggerEnter", gameObject, triggerGameObject )
+                                        Daneel.Event.Fire( triggerGameObject, "OnTriggerEnter", triggerGameObject, gameObject )
+                                    end
+                                elseif gameObjectWasInRange then
+                                    -- was in the trigger, but not anymore
+                                    table.removevalue( trigger.gameObjectsInRangeLastUpdate, gameObject )
+                                    Daneel.Event.Fire( gameObject, "OnTriggerExit", gameObject, triggerGameObject )
+                                    Daneel.Event.Fire( triggerGameObject, "OnTriggerExit", triggerGameObject, gameObject )
+                                end
+                            else 
+                                -- gameObject is dead
+                                gameObjects[ i ] = nil
+                                reindexGameObjects = true
+                            end
+                        end -- for gameObjects with current tag
+
+                        if reindexGameObjects == true then
+                            GameObject.Tags[ tag ] = table.reindex( gameObjects )
+                            reindexGameObjects = false
+                        end
+                    end -- if some game objects have this tag
+                end -- for component._tags
+            end -- it's time to update this trigger
+        else
+            -- this component's game object is dead
+            Trigger.triggerComponents[i] = nil
+            reindexComponents = true
+        end -- game object is alive
+    end -- for Trigger.triggerComponents
+
+    if reindexComponents == true then
+        Trigger.triggerComponents = table.reindex( Trigger.triggerComponents )
+    end
+end
+
+--- Create a new Trigger component.
+-- @param gameObject (GameObject) The game object.
+-- @param params (table) [optional] A table of parameters.
+-- @return (Trigger) The new component.
+function Trigger.New( gameObject, params )
+    local trigger = {
+        _range = 1,
+        _updateInterval = 5,
+        _tags = {},
+        gameObjectsInRangeLastUpdate = {},
+    }
+    trigger.gameObject = gameObject
+    gameObject.trigger = trigger
+    setmetatable( trigger, Trigger )
+    if params ~= nil then
+        trigger:Set( params )
+    end
+    return trigger
+end
+
+--- Set tag(s) of the game objects the component works with.
+-- @param trigger (Trigger) The trigger component.
+-- @param tags (string or table) The tag(s) of the game objects the component works with.
+function Trigger.SetTags( trigger, tags )
+    if type( tags ) == "string" then
+        tags = {tags}
+    end
+    trigger._tags = tags
+end
+
+--- Return the tag(s) of the game objects the component works with.
+-- @param trigger (Trigger) The trigger component.
+-- @return (table) The tag(s) of the game objects the component works with.
+function Trigger.GetTags( trigger )
+    return trigger._tags
+end
+
+--- Set the range of the trigger.
+-- @param trigger (Trigger) The trigger component.
+-- @param range (number) The range of the trigger. Must be >= 0. Set to 0 to use the trigger's map or model as area.
+function Trigger.SetRange( trigger, range )
+    trigger._range = math.clamp( range, 0, 9999 )
+end
+
+--- Get the range of the trigger.
+-- @param trigger (Trigger) The trigger component.
+-- @return (number) The range of the trigger.
+function Trigger.GetRange( trigger )
+    return trigger._range
+end
+
+--- Set the interval (in frames) at which the trigger is automatically updated.
+-- A value < 1 will prevent the trigger to be automatically updated.
+-- @param trigger (Trigger) The trigger component.
+-- @param updateInterval (number) The update interval in frames. Must be >= 0
+function Trigger.SetUpdateInterval( trigger, updateInterval )
+    trigger._updateInterval = math.clamp( updateInterval, 0, 9999 )
+end
+
+--- Get the interval (in frames) at which the trigger is automatically updated.
+-- @param trigger (Trigger) The trigger component.
+-- @return (number) The update interval (in frames) of the trigger.
+function Trigger.GetUpdateInterval( trigger )
+    return trigger._updateInterval
+end
+
+--- Get the gameObjets that are within range of that trigger.
+-- @param trigger (Trigger) The trigger component.
+-- @return (table) The list of the gameObjects in range (empty if none in range).
+function Trigger.GetGameObjectsInRange( trigger )
+    local triggerPosition = self.gameObject.transform:GetPosition() 
+    local gameObjectsInRange = {}
+    for i=1, #trigger._tags do
+        local gameObjects = GameObject.GetWithTag( trigger._tags[i] )
+        for j=1, #gameObjects do
+            local gameObject = gameObjets[j]
+            if 
+                gameObject ~= trigger.gameObject and
+                trigger:IsGameObjectInRange( gameObject, triggerPosition )
+            then
+                table.insertonce( gameObjectsInRange, gameObject )
+            end
+        end
+    end
+    return gameObjectsInRange
+end
+
+--- Tell whether the provided game object is in range of the trigger.
+-- @param trigger (Trigger) The trigger component.
+-- @param gameObject (GameObject) The gameObject.
+-- @param triggerPosition (Vector3) [optional] The trigger's current position.
+-- @return (boolean) True or false.
+function Trigger.IsGameObjectInRange( trigger, gameObject, triggerPosition )
+    local errorHead = "Behavior:IsGameObjectInRange( gameObject[, triggerPosition] )"
+    local triggerGameObject = trigger.gameObject
+    if triggerPosition == nil then
+        triggerPosition = triggerGameObject.transform:GetPosition()
+    end 
+
+    local gameObjectIsInTrigger = false
+    local directionToGameObject = gameObject.transform:GetPosition() - triggerPosition
+    local sqrDistanceToGameObject = directionToGameObject:SqrLength()
+
+    if trigger._range > 0 and sqrDistanceToGameObject <= trigger._range ^ 2 then
+        gameObjectIsInTrigger = true
+
+    elseif trigger._range <= 0 then
+        if trigger.ray == nil then
+            trigger.ray = Ray.New( Vector3.New(0), Vector3.New(0) )
+        end
+        local ray = trigger.ray
+        ray.position = triggerPosition
+        ray.direction = directionToGameObject -- ray from the trigger to the game object
+        
+        local distanceToTriggerAsset = nil -- distance to trigger model or map
+        if triggerGameObject.modelRenderer ~= nil then
+            distanceToTriggerAsset = ray:IntersectsModelRenderer( triggerGameObject.modelRenderer )
+        elseif triggerGameObject.mapRenderer ~= nil then
+            distanceToTriggerAsset = ray:IntersectsMapRenderer( triggerGameObject.mapRenderer )
+        end
+
+        -- if the gameObject has a model or map, replace the distance to the game object with the distance to the asset
+        if gameObject.modelRenderer ~= nil then
+            sqrDistanceToGameObject = ray:IntersectsModelRenderer( gameObject.modelRenderer ) ^ 2
+        elseif gameObject.mapRenderer ~= nil then
+            sqrDistanceToGameObject = ray:IntersectsMapRenderer( gameObject.mapRenderer ) ^ 2
+        end
+
+        if distanceToTriggerAsset ~= nil and sqrDistanceToGameObject <= distanceToTriggerAsset ^ 2 then
+            -- distance from the trigger to the game object is inferior to the distance from the trigger to the trigger's model or map
+            -- that means the GO is inside of the model/map
+            -- the ray goes through the GO origin before intersecting the asset 
+            gameObjectIsInTrigger = true
+        end
+    end
+
+    return gameObjectIsInTrigger
+end
+
+local _trigger = { "trigger", "Trigger" }
+table.mergein( Daneel.Debug.functionArgumentsInfo, {
+    ["Trigger.New"] = { _go, { "params", "table", isOptional = true } },
+    ["Trigger.SetTags"] = { _trigger, { "tags", { s, t } } },
+    ["Trigger.GetTags"] = { _trigger },
+    ["Trigger.SetRange"] = { _trigger, { "range", n } },
+    ["Trigger.GetRange"] = { _trigger },
+    ["Trigger.SetUpdateInterval"] = { _trigger, { "updateInterval", n } },
+    ["Trigger.GetUpdateInterval"] = { _trigger },
+    ["Trigger.GetGameObjectsInRange"] = { _trigger },
+    ["Trigger.IsGameObjectInRange"] = { _trigger, _go, { "triggerPosition", "Vector3", isOptional = true } },
+} )
+
+--------------------------------------------------------------------------------
+-- Language - Localization
+
+Lang = {
+    dictionariesByLanguage = { english = {} },
+    cache = {},
+    gameObjectsToUpdate = {},
+    doNotCallUpdate = true, -- let that here ! It's read in Daneel.Load() to not include Lang.Update() to the list of functions to be called every frames.
+}
+
+Daneel.modules.Lang = Lang
+
+function Lang.DefaultConfig()
+    return {
+        default = nil, -- Default language
+        current = nil, -- Current language
+        searchInDefault = true, -- Tell whether Lang.Get() search a line key in the default language 
+        -- when it is not found in the current language before returning the value of keyNotFound
+        keyNotFound = "langkeynotfound", -- Value returned when a language key is not found
+    }
+end
+Lang.Config = Lang.DefaultConfig()
+
+function Lang.Load()
+    local defaultLanguage = nil
+
+    for lang, dico in pairs( Lang.dictionariesByLanguage ) do
+        local llang = lang:lower()
+        if llang ~= lang then
+            Lang.dictionariesByLanguage[ llang ] = dico
+            Lang.dictionariesByLanguage[ lang ] = nil
+        end
+
+        if defaultLanguage == nil then
+            defaultLanguage = llang
+        end
+    end
+
+    if defaultLanguage == nil then -- no dictionary found
+        if Daneel.Config.debug.enableDebug == true then
+            error("Lang.Load(): No dictionary found in Lang.dictionariesByLanguage !")
+        end
+        return
+    end
+    
+    if Lang.Config.default == nil then
+        Lang.Config.default = defaultLanguage
+    end
+    Lang.Config.default = Lang.Config.default:lower()
+
+    if Lang.Config.current == nil then
+        Lang.Config.current = Lang.Config.default
+    end
+    Lang.Config.current = Lang.Config.current:lower()
+end
+
+function Lang.Start() 
+    if Lang.Config.current ~= nil then
+        Lang.Update( Lang.Config.current )
+    end
+end
+
+--- Get the localized line identified by the provided key.
+-- @param key (string) The language key.
+-- @param replacements (table) [optional] The placeholders and their replacements.
+-- @return (string) The line.
+function Lang.Get( key, replacements )
+    if replacements == nil and Lang.cache[ key ] ~= nil then
+        return Lang.cache[ key ]
+    end
+
+    local currentLanguage = Lang.Config.current
+    local defaultLanguage = Lang.Config.default
+    local searchInDefault = Lang.Config.searchInDefault
+    local cache = true
+
+    local keys = string.split( key, "." )
+    local language = currentLanguage
+    if Lang.dictionariesByLanguage[ keys[1] ] ~= nil then
+        language = table.remove( keys, 1 )
+    end
+    
+    local noLangKey = table.concat( keys, "." ) -- rebuilt the key, but without the language
+    local fullKey = language .. "." .. noLangKey 
+    if replacements == nil and Lang.cache[ fullKey ] ~= nil then
+        return Lang.cache[ fullKey ]
+    end
+
+    local dico = Lang.dictionariesByLanguage[ language ]
+    local errorHead = "Lang.Get(key[, replacements]): "
+    if dico == nil then
+        error( errorHead.."Language '"..language.."' does not exists", key, fullKey )
+    end
+
+    for i=1, #keys do
+        local _key = keys[i]
+        if dico[_key] == nil then
+            -- key was not found in this language
+            -- search for it in the default language
+            if searchInDefault == true and language ~= defaultLanguage then
+                cache = false
+                dico = Lang.Get( defaultLanguage.."."..noLangKey, replacements )
+            else -- already default language or don't want to search in
+                dico = Lang.Config.keyNotFound or "keynotfound"
+            end
+
+            break
+        end
+        dico = dico[ _key ]
+        -- dico is now a nested table in the dictionary, or a searched string (or the keynotfound string)
+    end
+
+    -- dico should be the searched (or keynotfound) string by now
+    local line = dico
+    if type( line ) ~= "string" then
+        error( errorHead.."Localization key '"..key.."' does not lead to a string but to : '"..tostring(line).."'.", key, fullKey )
+    end
+
+    -- process replacements
+    if replacements ~= nil then
+        line = Daneel.Utilities.ReplaceInString( line, replacements )
+    elseif cache == true and line ~= Lang.Config.keyNotFound then
+        Lang.cache[ key ] = line -- ie: "greetings.welcome"
+        Lang.cache[ fullKey ] = line -- ie: "english.greetings.welcome"
+    end
+
+    return line
+end
+
+--- Register a game object to update its text renderer whenever the language will be updated by Lang.Update().
+-- @param gameObject (GameObject) The gameObject.
+-- @param key (string) The language key.
+-- @param replacements (table) [optional] The placeholders and their replacements.
+function Lang.RegisterForUpdate( gameObject, key, replacements )
+    Lang.gameObjectsToUpdate[gameObject] = {
+        key = key,
+        replacements = replacements,
+    }
+end
+
+--- Update the current language and the text of all game objects that have registered via Lang.RegisterForUpdate(). <br>
+-- Fire the OnLangUpdate event.
+-- @param language (string) The new current language.
+function Lang.Update( language )
+    language = Daneel.Debug.CheckArgValue( language, "language", table.getkeys( Lang.dictionariesByLanguage ), "Lang.Update(language): " )
+    
+    Lang.cache = {} -- ideally only the items that do not begins by a language name should be deleted
+    Lang.Config.current = language
+    for gameObject, data in pairs( Lang.gameObjectsToUpdate ) do
+        if gameObject.inner == nil or gameObject.isDestroyed == true then
+            Lang.gameObjectsToUpdate[ gameObject ] = nil
+        else
+            local text = Lang.Get( data.key, data.replacements )
+            
+            if gameObject.textArea ~= nil then
+                gameObject.textArea:SetText( text )
+            elseif gameObject.textRenderer ~= nil then
+                gameObject.textRenderer:SetText( text )
+            
+            elseif Daneel.Config.debug.enableDebug then
+                print( "Lang.Update(language): WARNING : "..tostring( gameObject ).." has no TextRenderer or GUI.TextArea component." )
+            end
+        end
+    end
+
+    Daneel.Event.Fire( "OnLangUpdate" )
+end
+
+table.mergein( Daneel.Debug.functionArgumentsInfo, {
+    ["Lang.Get"] = { { "key", "string" }, { "replacements", "table", isOptional = true } },
+    ["Lang.RegisterForUpdate"] = { _go, { "key", "string" }, { "replacements", "table", isOptional = true } },
+    ["Lang.Update"] = { { "language", "string" } },
+} )
+
 -- CraftStudio.lua
 -- Contains extensions of CraftStudio's API.
 --
@@ -2165,7 +2783,6 @@ local v2 = "Vector2"
 local v3 = "Vector3"
 local _p = { "params", t }
 
-
 setmetatable( Vector3, { __call = function(Object, ...) return Object:New(...) end } )
 setmetatable( Quaternion, { __call = function(Object, ...) return Object:New(...) end } )
 setmetatable( Plane, { __call = function(Object, ...) return Object:New(...) end } )
@@ -2176,15 +2793,14 @@ Plane.__tostring = function( p )
     -- tostring() to prevent a "p.normal is not defined" error
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Assets
 
 Asset = {}
 Asset.__index = Asset
 setmetatable( Asset, { __call = function(Object, ...) return Object.Get(...) end } )
 
-local assetPathTypes = table.merge( {"string"}, Daneel.Config.assetTypes ) -- Allow the assetPath argument to be an asset or the asset path (string)
+local assetPathTypes = table.merge( { "string" }, Daneel.Config.assetTypes ) -- Allow the assetPath argument to be an asset or the asset path (string)
 --- Alias of CraftStudio.FindAsset( assetPath[, assetType] ).
 -- Get the asset of the specified name and type.
 -- The first argument may be an asset object, so that you can check if a variable was an asset object or name (and get the corresponding object).
@@ -2265,8 +2881,7 @@ function Asset.GetId( asset )
     return Daneel.Utilities.GetId( asset )
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Component ("mother" object of components)
 
 Component = {}
@@ -2307,11 +2922,10 @@ table.mergein( Daneel.Debug.functionArgumentsInfo, {
 } )
 
 
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Map
 
 Map.oGetPathInPackage = Map.GetPathInPackage
-
 function Map.GetPathInPackage( asset )
     local path = rawget( asset, "path" )
     if path == nil then
@@ -2321,20 +2935,17 @@ function Map.GetPathInPackage( asset )
 end
 
 Map.oLoadFromPackage = Map.LoadFromPackage
-
 function Map.LoadFromPackage( path, callback )
     Map.oLoadFromPackage( path, function( map )
         if map ~= nil then
             --fix for Map.GetPathInPackage() that returns an error when the asset was dynamically loaded
             rawset( map, "path", path )
-            map.isDynamicallyLoaded = true
         end
         callback( map )
     end )
 end
 
 Map.oGetBlockIDAt = Map.GetBlockIDAt
-
 --- Returns A block ID between 0-254 if a block exists at the given location (all valid block IDs are in the range 0-254),
 -- otherwise f there is no block at the given location then it will return Map.EmptyBlockID (which has a value of 255).
 -- @param map (Map) The map.
@@ -2352,7 +2963,6 @@ function Map.GetBlockIDAt( map, x, y, z )
 end
 
 Map.oGetBlockOrientationAt = Map.GetBlockOrientationAt
-
 --- Returns The block orientation of the block at the specified location, 
 -- otherwise if there is no block at the given location it will return Map.BlockOrientation.North.
 -- @param map (Map) The map.
@@ -2370,7 +2980,6 @@ function Map.GetBlockOrientationAt( map, x, y, z )
 end
 
 Map.oSetBlockAt = Map.SetBlockAt
-
 --- Sets a block's ID and block orientation at the given location on the map.
 -- @param map (Map) The map.
 -- @param x (number or Vector3) The location's x component, or the location as a Vector3.
@@ -2393,12 +3002,10 @@ function Map.SetBlockAt( map, x, y, z, id, orientation )
     end
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Transform
 
 Transform.oSetLocalScale = Transform.SetLocalScale
-
 --- Set the transform's local scale.
 -- @param transform (Transform) The transform component.
 -- @param scale (number or Vector3) The global scale.
@@ -2444,6 +3051,8 @@ function Transform.WorldToLocal( transform, position )
     if go == nil then
         go = CS.CreateGameObject( "WorldToLocal", transform.gameObject )
         transform.worldToLocalGO = go
+    else
+        go:SetParent( transform.gameObject )
     end
     go.transform:SetPosition( position )
     return go.transform:GetLocalPosition()
@@ -2458,17 +3067,17 @@ function Transform.LocalToWorld( transform, position )
     if go == nil then
         go = CS.CreateGameObject( "WorldToLocal", transform.gameObject )
         transform.worldToLocalGO = go
+    else
+        go:SetParent( transform.gameObject )
     end
     go.transform:SetLocalPosition( position )
     return go.transform:GetPosition()
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- ModelRenderer
 
 ModelRenderer.oSetModel = ModelRenderer.SetModel
-
 --- Attach the provided model to the provided modelRenderer.
 -- @param modelRenderer (ModelRenderer) The modelRenderer.
 -- @param modelNameOrAsset (string or Model) [optional] The model name or asset, or nil.
@@ -2481,7 +3090,6 @@ function ModelRenderer.SetModel( modelRenderer, modelNameOrAsset )
 end
 
 ModelRenderer.oSetAnimation = ModelRenderer.SetAnimation
-
 --- Set the specified animation for the modelRenderer's current model.
 -- @param modelRenderer (ModelRenderer) The modelRenderer.
 -- @param animationNameOrAsset (string or ModelAnimation) [optional] The animation name or asset, or nil.
@@ -2508,12 +3116,10 @@ function ModelRenderer.Set( modelRenderer, params )
     Component.Set( modelRenderer, params )
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- MapRenderer
 
 MapRenderer.oSetMap = MapRenderer.SetMap
-
 --- Attach the provided map to the provided map renderer.
 -- @param mapRenderer (MapRenderer) The map renderer.
 -- @param mapNameOrAsset (string or Map) [optional] The map name or asset, or nil.
@@ -2531,7 +3137,6 @@ function MapRenderer.SetMap( mapRenderer, mapNameOrAsset, replaceTileSet )
 end
 
 MapRenderer.oSetTileSet = MapRenderer.SetTileSet
-
 --- Set the specified tileSet for the mapRenderer's map.
 -- @param mapRenderer (MapRenderer) The mapRenderer.
 -- @param tileSetNameOrAsset (string or TileSet) [optional] The tileSet name or asset, or nil.
@@ -2568,16 +3173,14 @@ function MapRenderer.LoadNewMap( mapRenderer, callback )
             end
         end )
     elseif Daneel.Config.debug.enableDebug == true then
-        print("ERROR: MapRenderer.LoadNewMap(): No map is set on the provided map renderer. Can't load new map.")
+        error("MapRenderer.LoadNewMap(): No map is set on the provided map renderer. Can't load new map.")
     end
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- TextRenderer
 
 TextRenderer.oSetFont = TextRenderer.SetFont
-
 --- Set the provided font to the provided text renderer.
 -- @param textRenderer (TextRenderer) The text renderer.
 -- @param fontNameOrAsset (string or Font) [optional] The font name or asset, or nil.
@@ -2590,7 +3193,6 @@ function TextRenderer.SetFont( textRenderer, fontNameOrAsset )
 end
 
 TextRenderer.oSetAlignment = TextRenderer.SetAlignment
-
 --- Set the text's alignment.
 -- @param textRenderer (TextRenderer) The textRenderer.
 -- @param alignment (string or TextRenderer.Alignment) The alignment. Values (case-insensitive when of type string) may be "left", "center", "right", TextRenderer.Alignment.Left, TextRenderer.Alignment.Center or TextRenderer.Alignment.Right.
@@ -2615,12 +3217,10 @@ function TextRenderer.SetTextWidth( textRenderer, width )
     textRenderer.gameObject.transform:SetScale( width / widthScaleRatio )
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Camera
 
 Camera.oSetProjectionMode = Camera.SetProjectionMode
-
 --- Sets the camera projection mode.
 -- @param camera (Camera) The camera.
 -- @param projectionMode (string or Camera.ProjectionMode) The projection mode. Possible values are "perspective", "orthographic" (as a case-insensitive string), Camera.ProjectionMode.Perspective or Camera.ProjectionMode.Orthographic.
@@ -2740,7 +3340,6 @@ function Camera.WorldToScreenPoint( camera, position )
 end
 
 Camera.oGetFOV = Camera.GetFOV
-
 --- Returns the FOV of the provided perspective camera (rounded to the second digit after the coma).
 -- @param camera (Camera) The Camera component.
 -- @return (number) The FOV
@@ -2753,7 +3352,6 @@ Camera.GetFov = Camera.GetFOV
 Camera.SetFov = Camera.SetFOV
 
 Camera.oProject = Camera.Project
-
 --- Projects a 3D space position to a 2D screen position.
 -- @param camera (Camera) The camera component.
 -- @param position (Vector3) The position.
@@ -2761,7 +3359,6 @@ Camera.oProject = Camera.Project
 function Camera.Project( camera, position )
     return setmetatable( Camera.oProject( camera, position ), Vector2 )
 end
-
 
 table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["Transform.SetLocalScale"] = { { "transform", "Transform" }, { "number", { n, v3 } } },
@@ -2797,22 +3394,21 @@ table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["Camera.GetFOV"] =  { { "camera", "Camera" } },
 } )
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Vector2
 
 Vector2 = {}
 Vector2.__index = Vector2
 setmetatable( Vector2, { __call = function(Object, ...) return Object.New(...) end } )
-Daneel.Config.objects.Vector2 = Vector2
+Daneel.Config.objectsByType.Vector2 = Vector2
 
 function Vector2.__tostring(vector2)
     return "Vector2: { x="..vector2.x..", y="..vector2.y.." }"
 end
 
 --- Creates a new Vector2 intance.
--- @param x (number, string or Vector2) The vector's x component.
--- @param y [optional] (number or string) The vector's y component. If nil, will be equal to x.
+-- @param x (number, table or Vector2) The vector's x component, or a table that contains "x" and "y" components.
+-- @param y (number) [optional] The vector's y component. If nil, will be equal to x.
 -- @return (Vector2) The new instance.
 function Vector2.New(x, y)
     local vector = setmetatable( { x = x, y = y }, Vector2 )
@@ -2938,8 +3534,21 @@ function Vector2.__eq(a, b)
     return ((a.x == b.x) and (a.y == b.y))
 end
 
+--- Returns a string representation of the vector's component's values.
+-- ie: For a vector {-6.5,10}, the returned string would be "-6.5 10".
+-- Such string can be converted back to a vector with string.tovector()
+-- @param vector (Vector2) The vector.
+-- @return (string) The string.
+function Vector2.ToString( vector )
+    for i, comp in pairs({"x", "y"}) do
+        if tostring(vector[comp]) == "-0" then
+            vector[comp] = 0
+        end
+    end
+    return vector.x.." "..vector.y
+end
 
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Vector3
 
 Vector3.tostringRoundValue = 3
@@ -2953,9 +3562,9 @@ Vector3.__tostring = function( vector )
 end
 
 --- Returns a new Vector3.
--- @params x (number, Vector3 or Vector2) [optional] The vector's x component.
--- @params y (number or Vector2) [optional] The vector's y component.
--- @params z (number) [optional] The vector's z component.
+-- @param x (number, Vector3 or Vector2) [optional] The vector's x component.
+-- @param y (number or Vector2) [optional] The vector's y component.
+-- @param z (number) [optional] The vector's z component.
 function Vector3.New( x, y, z, z2 )
     if x == Vector3 then -- when called like Vector3:New( x, y, z )
         x = y
@@ -3011,14 +3620,19 @@ end
 
 --- Convert a string representation of a vector component's values to a Vector3 or a Vector2.
 -- ie: For a string "-6.5 10 2.1", the returned vector would be {-6.5, 10, 2.1}.
--- Such string can be created from a Vector3 with with Vector3.ToString()
+-- Such string can be created from a vector2 or Vector3 with Vector2.ToString() or Vector3.ToString().
 -- @param sVector (string) The vector as a string, each component's value being separated by a space.
 -- @return (Vector3 or vector2) The vector.
 function string.tovector( sVector )
     local vector = Vector3:New(0)
     local keys = { "z", "y", "x" }
     for match in string.gmatch( sVector, "[0-9.-]+" ) do
-        vector[ table.remove( keys ) ] = tonumber(match)
+        local comp = table.remove( keys )
+        if comp ~= nil then
+            vector[ comp ] = tonumber(match)
+        else
+            break
+        end
     end
     if table.remove( keys ) == "z" then
         setmetatable( vector, Vector2 )
@@ -3047,10 +3661,9 @@ table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["string.tovector"] = { { "sVector", s } },
 } )
 
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 CraftStudio.Input.oGetMousePosition = CraftStudio.Input.GetMousePosition
-
 --- Return the mouse position on screen coordinates {x, y}
 -- @return (Vector2) The on-screen mouse position.
 function CraftStudio.Input.GetMousePosition()
@@ -3058,7 +3671,6 @@ function CraftStudio.Input.GetMousePosition()
 end
 
 CraftStudio.Input.oGetMouseDelta = CraftStudio.Input.GetMouseDelta
-
 --- Return the mouse delta (the variation of position) since the last frame.
 -- Positive x is right, positive y is bottom.
 -- @return (Vector2) The position's delta.
@@ -3066,11 +3678,35 @@ function CraftStudio.Input.GetMouseDelta()
     return setmetatable( CraftStudio.Input.oGetMouseDelta(), Vector2 )
 end
 
-CraftStudio.Screen.oSetSize = CraftStudio.Screen.SetSize
+CraftStudio.Input.isMouseLocked = false
 
+CraftStudio.Input.oLockMouse = CraftStudio.Input.LockMouse
+function CraftStudio.Input.LockMouse()
+    CraftStudio.Input.isMouseLocked = true
+    CraftStudio.Input.oLockMouse()
+end
+
+CraftStudio.Input.oUnlockMouse = CraftStudio.Input.UnlockMouse
+function CraftStudio.Input.UnlockMouse()
+    CraftStudio.Input.isMouseLocked = false
+    CraftStudio.Input.oUnlockMouse()
+end
+
+--- Toggle the locked state of the mouse, which can be accessed via the CraftStudio.Input.isMouseLocked property.
+function CraftStudio.Input.ToggleMouseLock()
+    if CraftStudio.Input.isMouseLocked == true then
+        CraftStudio.Input.UnlockMouse()
+    else
+        CraftStudio.Input.LockMouse()
+    end
+end
+
+--------------------------------------------------------------------------------
+
+CraftStudio.Screen.oSetSize = CraftStudio.Screen.SetSize
 --- Sets the size of the screen, in pixels.
--- @params x (number or table) The width of the screen or a table containing the width and height as x and and y components.
--- @params y (number) [optional] The height of the screen (has no effect when the "x" argument is a table).
+-- @param x (number or table) The width of the screen or a table containing the width and height as x and and y components.
+-- @param y (number) [optional] The height of the screen (has no effect when the "x" argument is a table).
 function CraftStudio.Screen.SetSize( x, y )
     if type( x ) == "table" then
         y = x.y
@@ -3081,7 +3717,6 @@ function CraftStudio.Screen.SetSize( x, y )
 end
 
 CraftStudio.Screen.oGetSize = CraftStudio.Screen.GetSize
-
 --- Return the size of the screen, in pixels.
 -- @return (Vector2) The screen's size.
 function CraftStudio.Screen.GetSize()
@@ -3091,13 +3726,13 @@ function CraftStudio.Screen.GetSize()
 end
 CraftStudio.Screen.GetSize() -- set aspect ratio
 
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- RaycastHit
 
 RaycastHit = {}
 RaycastHit.__index = RaycastHit
 setmetatable( RaycastHit, { __call = function(Object, ...) return Object.New(...) end } )
-Daneel.Config.objects.RaycastHit = RaycastHit
+Daneel.Config.objectsByType.RaycastHit = RaycastHit
 
 -- Allow to access the "hitLocation" property on raycastHits for backward compatibility.
 -- The property has been renamed "hitPosition" since v1.5.0.
@@ -3129,8 +3764,7 @@ function RaycastHit.New( params )
     return setmetatable( params, RaycastHit )
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Ray
 
 setmetatable( Ray, { __call = function(Object, ...) return Object:New(...) end } )
@@ -3190,7 +3824,6 @@ function Ray.IntersectsGameObject( ray, gameObjectNameOrInstance )
 end
 
 Ray.oIntersectsPlane = Ray.IntersectsPlane
-
 -- Check if the ray intersects the provided plane and returns the distance of intersection or a raycastHit.
 -- @param ray (Ray) The ray.
 -- @param plane (Plane) The plane.
@@ -3209,7 +3842,6 @@ function Ray.IntersectsPlane( ray, plane, returnRaycastHit )
 end
 
 Ray.oIntersectsModelRenderer = Ray.IntersectsModelRenderer
-
 -- Check if the ray intersects the provided modelRenderer.
 -- @param ray (Ray) The ray.
 -- @param modelRenderer (ModelRenderer) The modelRenderer.
@@ -3231,7 +3863,6 @@ function Ray.IntersectsModelRenderer( ray, modelRenderer, returnRaycastHit )
 end
 
 Ray.oIntersectsMapRenderer = Ray.IntersectsMapRenderer
-
 -- Check if the ray intersects the provided mapRenderer.
 -- @param ray (Ray) The ray.
 -- @param mapRenderer (MapRenderer) The map renderer.
@@ -3263,7 +3894,6 @@ function Ray.IntersectsMapRenderer( ray, mapRenderer, returnRaycastHit )
 end
 
 Ray.oIntersectsTextRenderer = Ray.IntersectsTextRenderer
-
 -- Check if the ray intersects the provided textRenderer.
 -- @param ray (Ray) The ray.
 -- @param textRenderer (TextRenderer) The textRenderer.
@@ -3284,8 +3914,7 @@ function Ray.IntersectsTextRenderer( ray, textRenderer, returnRaycastHit )
     return distance, normal
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Scene
 
 --- Alias of CraftStudio.LoadScene().
@@ -3298,14 +3927,13 @@ function Scene.Load( sceneNameOrAsset )
 end
 
 CraftStudio.oLoadScene = CraftStudio.LoadScene
-
 --- Schedules loading the specified scene after the current tick (1/60th of a second) has completed.
 -- When the new scene is loaded, all of the current scene's game objects will be removed.
 -- Calling this function doesn't immediately stops the calling function. As such, you might want to add a return statement afterwards.
 -- @param sceneNameOrAsset (string or Scene) The scene name or asset.
 function CraftStudio.LoadScene( sceneNameOrAsset )
     local scene = Asset.Get( sceneNameOrAsset, "Scene", true )
-    Daneel.Event.Fire( "OnSceneLoad", scene )
+    Daneel.Event.Fire( "OnNewSceneWillLoad", scene )
     Daneel.Event.events = {} -- do this here to make sure that any events that might be fired from OnSceneLoad-catching function are indeed fired
     Scene.current = scene
     CraftStudio.oLoadScene( scene )
@@ -3327,11 +3955,9 @@ function Scene.Append( sceneNameOrAsset, parentNameOrInstance )
     return CraftStudio.AppendScene( scene, parent )
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 CraftStudio.oDestroy = CraftStudio.Destroy
-
 --- Removes the specified game object (and all of its descendants) or the specified component from its game object.
 -- You can also optionally specify a dynamically loaded asset for unloading (See Map.LoadFromPackage ).
 -- Sets the 'isDestroyed' property to 'true' and fires the 'OnDestroy' event on the object.
@@ -3363,33 +3989,62 @@ table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["CraftStudio.Destroy"] = { { "object" } },
 } )
 
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Storage
 
-CraftStudio.Input.isMouseLocked = false
-
-CraftStudio.Input.oLockMouse = CraftStudio.Input.LockMouse
-function CraftStudio.Input.LockMouse()
-    CraftStudio.Input.isMouseLocked = true
-    CraftStudio.Input.oLockMouse()
-end
-
-CraftStudio.Input.oUnlockMouse = CraftStudio.Input.UnlockMouse
-function CraftStudio.Input.UnlockMouse()
-    CraftStudio.Input.isMouseLocked = false
-    CraftStudio.Input.oUnlockMouse()
-end
-
---- Toggle the locked state of the mouse, which can be accessed via the CraftStudio.Input.isMouseLocked property.
-function CraftStudio.Input.ToggleMouseLock()
-    if CraftStudio.Input.isMouseLocked then
-        CraftStudio.Input.UnlockMouse()
-    else
-        CraftStudio.Input.LockMouse()
+CraftStudio.Storage.oSave = CraftStudio.Storage.Save
+--- Store locally on the computer the provided data under the provided identifier.
+-- @param identifier (string) The identifier of the data.
+-- @param data (mixed) The data to store. May be nil.
+-- @param callback (function) [optional] The function called when the save has completed. The potential error (as a string) is passed to the callback first and only argument (nil if no error).
+function CraftStudio.Storage.Save( identifier, data, callback )
+    if data ~= nil and type( data ) ~= "table" then
+        data = {
+            value = data,
+            isSavedByDaneel = true
+        }
     end
+    CraftStudio.Storage.oSave( identifier, data, function( _error )
+        if _error ~= nil and Daneel.Config.debug.enableDebug == true then
+            table.print( data )
+            print( "CS.Storage.Save( identifier, data[, callback] ) : Error saving with identifier, data (printed above) and error : ", identifier, _error.message )
+        end
+        if callback ~= nil then
+            callback( _error )
+        end
+    end )
 end
 
+CraftStudio.Storage.oLoad = CraftStudio.Storage.Load
+--- Load data stored locally on the computer under the provided identifier. The load operation may not be instantaneous.
+-- @param identifier (string) The identifier of the data.
+-- @param defaultValue (mixed) [optional] The value that is returned if no data (and no error) is found.
+-- @param callback (function) The function called when the data is loaded. The the potential error (nil if no error) and data (of mixed type) are passed as first and second argument, respectively.
+function CraftStudio.Storage.Load( identifier, defaultValue, callback )
+    if callback == nil and type( defaultValue ) == "function" then
+        callback = defaultValue
+        defaultValue = nil
+    end
+    CraftStudio.Storage.oLoad( identifier, function( _error, data )
+        if _error ~= nil and Daneel.Config.debug.enableDebug == true then
+            print( "CS.Storage.Load( identifier[, defaultValue], callback ) : Error loading with identifier, default value and error", identifier, defaultValue, _error.message )
+        end
+        if data ~= nil and data.value ~= nil and data.isSavedByDaneel == true then
+            data = data.value
+        end
+        if _error == nil and data == nil then
+            data = defaultValue
+        end
+        callback( _error, data )
+    end )
+end
 
-----------------------------------------------------------------------------------
+table.mergein( Daneel.Debug.functionArgumentsInfo, {
+    ["CraftStudio.Storage.Save"] = { { "identifier", s }, { "data", isOptional = true }, { "callback", "function", isOptional = true } },
+    ["CraftStudio.Storage.Load"] = { { "identifier", s }, { "defaultValue", isOptional = true }, { "callback", "function", isOptional = true } }
+} )
+
+--------------------------------------------------------------------------------
 -- GAMEOBJECT
 
 setmetatable( GameObject, { __call = function(Object, ...) return Object.New(...) end } )
@@ -3408,7 +4063,6 @@ function GameObject.__index( gameObject, key )
     if GameObject[ key ] ~= nil then
         return GameObject[ key ]
     end
-
     if type( key ) == "string" then
         -- or the name of a getter
         local ucKey = string.ucfirst( key )
@@ -3419,7 +4073,6 @@ function GameObject.__index( gameObject, key )
             end
         end
     end
-
     return nil
 end
 
@@ -3441,37 +4094,38 @@ function GameObject.__newindex( gameObject, key, value )
     rawset( gameObject, key, value )
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 --- Create a new game object and optionally initialize it.
--- When the first argument is a scene name or asset, the scene may contains only one top-level game object.
--- If it's not the case, the function won't return any game object yet some may have been created (depending on the behavior of CS.AppendScene()).
--- @param name (string or Scene) The game object name or scene name or scene asset.
--- @param params (table) [optional] A table with parameters to initialize the new game object with.
+-- @param name (string) The game object name.
+-- @param params (table or GameObject) [optional] A table with parameters to initialize the new game object with, or the parent gameO object to attach to.
 -- @return (GameObject) The new game object.
 function GameObject.New( name, params )
     local gameObject = nil
-    local scene = Asset.Get( name, "Scene" ) -- scene will be nil if name is a sting istead of a scene path
-    if scene ~= nil then
-        gameObject = CraftStudio.AppendScene( scene )
+    if params ~= nil and getmetatable( params ) == GameObject then
+        gameObject = CraftStudio.CreateGameObject( name, params )
     else
         gameObject = CraftStudio.CreateGameObject( name )
     end
-    if params ~= nil and gameObject ~= nil then
+    if params ~= nil then
         gameObject:Set(params)
     end
     return gameObject
 end
 
 --- Create a new game object with the content of the provided scene and optionally initialize it.
--- @param gameObjectName (string) The game object name.
+-- @param name (string) The game object name.
 -- @param sceneNameOrAsset (string or Scene) The scene name or scene asset.
--- @param params (table) [optional] A table with parameters to initialize the new game object with.
+-- @param params (table or GameObject) [optional] A table with parameters to initialize the new game object with, or the parent gameO object to attach to..
 -- @return (GameObject) The new game object.
-function GameObject.Instantiate(gameObjectName, sceneNameOrAsset, params)
+function GameObject.Instantiate(name, sceneNameOrAsset, params)
     local scene = Asset.Get(sceneNameOrAsset, "Scene", true)
-    local gameObject = CraftStudio.Instantiate(gameObjectName, scene)
+    local gameObject = nil
+    if params ~= nil and getmetatable( params ) == GameObject then
+        gameObject = CraftStudio.Instantiate( name, scene, params )
+    else
+        gameObject = CraftStudio.Instantiate( name, scene )
+    end
     if params ~= nil then
         gameObject:Set( params )
     end
@@ -3528,8 +4182,7 @@ function GameObject.Set( gameObject, params )
     end
 end
 
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Miscellaneous
 
 --- Alias of CraftStudio.FindGameObject(name).
@@ -3576,7 +4229,6 @@ function GameObject.GetId( gameObject )
 end
 
 GameObject.oSetParent = GameObject.SetParent
-
 --- Set the game object's parent.
 -- Optionaly carry over the game object's local transform instead of the global one.
 -- @param gameObject (GameObject) The game object.
@@ -3622,7 +4274,6 @@ function GameObject.GetChild( gameObject, name, recursive )
 end
 
 GameObject.oGetChildren = GameObject.GetChildren
-
 --- Get all descendants of the game object.
 -- @param gameObject (GameObject) The game object.
 -- @param recursive (boolean) [default=false] Look for all descendants instead of just the first generation.
@@ -3641,24 +4292,6 @@ function GameObject.GetChildren( gameObject, recursive, includeSelf )
     return allChildren
 end
 
---- Get all descendants of the game object, sorted by name.
--- If several descendants have the same name, only the last one will be found in the returned table.
--- @param gameObject (GameObject) The game object.
--- @param recursive (boolean) [default=false] Look for all descendants instead of just the first generation.
--- @param includeSelf (boolean) [default=false] Include the game object in the children.
--- @return (table) The children.
-function GameObject.GetChildrenByName( gameObject, recursive, includeSelf )
-    local childrenArray = gameObject:GetChildren( recursive, includeSelf )
-    local childrenByName = {}
-    for i=1, #childrenArray do
-        local child = childrenArray[i]
-        childrenByName[ child:GetName() ] = child
-    end
-    return childrenByName
-end
-
-GameObject.oSendMessage = GameObject.SendMessage
-
 --- Search the ancestors of the provided game object. It returns the game object that match the condition in the search function.
 -- The search function receive a game object as the only argument.
 -- The search function must return true in order for GetInAncestors() to return the searched game object.
@@ -3676,6 +4309,7 @@ function GameObject.GetInAncestors( gameObject, searchFunction )
     return parent:GetInAncestors( searchFunction )
 end
 
+GameObject.oSendMessage = GameObject.SendMessage
 --- Tries to call a method with the provided name on all the scriptedBehaviors attached to the game object.
 -- The data argument can be nil or a table you want the method to receive as its first (and only) argument.
 -- If none of the scripteBehaviors attached to the game object or its children have a method matching the provided name, nothing happens.
@@ -3706,24 +4340,11 @@ function GameObject.SendMessage(gameObject, functionName, data)
     end
 end
 
---- Tries to call a method with the provided name on all the scriptedBehaviors attached to the game object or any of its descendants.
--- The data argument can be nil or a table you want the method to receive as its first (and only) argument.
--- If none of the scripteBehaviors attached to the game object or its children have a method matching the provided name, nothing happens.
+--- Display or hide the game object. Act on the renderer's opacity or the transform's local position.
+-- Sets the "isDisplayed" property to true or false and fire the "OnDisplay" event on the game object.
 -- @param gameObject (GameObject) The game object.
--- @param functionName (string) The method name.
--- @param data (table) [optional] The data to pass along the method call.
-function GameObject.BroadcastMessage(gameObject, functionName, data)
-    local allGos = gameObject:GetChildren(true, true) -- the game object + all of its children
-    for i, go in ipairs(allGos) do
-        go:SendMessage(functionName, data)
-    end
-end
-
---- Display or hide the game object. Act on the renderer's opacity or the transform's local scale.
--- Sets the "isDisplayed" property to true on the game object.
--- @param gameObject (GameObject) The game object.
--- @param value (boolean, number or Vector3) [default=true] Tell whether to display or hide the game object (as a boolean), or the opacity (as a number) or the local scale (as a Vector3).
--- @param forceUseLocalScale (boolean) [default=false] Tell whether to force to use the local scale (true) even on a game object that has a renderer component, or not.
+-- @param value (boolean, number or Vector3) [default=true] Tell whether to display or hide the game object (as a boolean), or the opacity (as a number) or the local position (as a Vector3).
+-- @param forceUseLocalPosition (boolean) [default=false] Tell whether to force to axt on the game object's local position even when it possess a renderer.
 function GameObject.Display( gameObject, value, forceUseLocalPosition )
     local display = false
     if value ~= false and value ~= 0 then -- nil, true or non 0 value
@@ -3741,7 +4362,7 @@ function GameObject.Display( gameObject, value, forceUseLocalPosition )
     --
     local renderer = gameObject.textRenderer or gameObject.modelRenderer or gameObject.mapRenderer
     
-    if renderer ~= nil and forceUseLocalPosition ~= true and valueType ~= "table" then
+    if renderer ~= nil and forceUseLocalPosition ~= true and valueType == "number" then
         if not display and gameObject.displayOpacity == nil then
             gameObject.displayOpacity = renderer:GetOpacity()
         end
@@ -3767,9 +4388,23 @@ function GameObject.Display( gameObject, value, forceUseLocalPosition )
     Daneel.Event.Fire( gameObject, "OnDisplay", gameObject )
 end
 
+--- Destroy the game object at the end of this frame.
+-- @param gameObject (GameObject) The game object.
+function GameObject.Destroy( gameObject )
+    for i, go in pairs( gameObject:GetChildren( true, true ) ) do -- recursive, include self
+        go:RemoveTag()
+    end
+    for key, value in pairs( gameObject ) do
+        if key ~= "inner" and type( value ) == "table" then -- in the Webplayer inner is a regular object, considered of type table and not userdata
+            Daneel.Event.Fire( value, "OnDestroy", value )
+        end
+    end
+    gameObject._name = gameObject:GetName() -- used by GameObject.__tostring()
+    CraftStudio.Destroy( gameObject )
+end
 
-----------------------------------------------------------------------------------
--- Add components
+--------------------------------------------------------------------------------
+-- Components
 
 --- Add a component to the game object and optionally initialize it.
 -- @param gameObject (GameObject) The game object.
@@ -3781,58 +4416,35 @@ function GameObject.AddComponent( gameObject, componentType, params )
     componentType = Daneel.Debug.CheckArgValue( componentType, "componentType", Daneel.Config.componentTypes, errorHead, componentType )
     local component = nil
 
-    if Daneel.Config.componentObjects[ componentType ] == nil then
+    if Daneel.Config.componentObjectsByType[ componentType ] == nil then
         -- componentType is not one of the component types
-        -- it may be a script path, alias or asset
+        -- it may be a script path, asset
         local script = Asset.Get( componentType, "Script" )
         if script == nil then
-            if Daneel.Config.debug.enableDebug then
-                error( errorHead.."Provided component type '"..tostring(componentType).."' in not one of the component types, nor a script asset, path or alias." )
-            end
-            return
+            error( errorHead.."Provided component type '"..tostring(componentType).."' is not one of the component types, nor a script asset or path." )
         end
+        component = gameObject:CreateScriptedBehavior( script, params or {} )
 
-        if params == nil then
-            params = {}
-        end
-        component = gameObject:CreateScriptedBehavior( script, params )
-        params = nil
-
-    elseif Daneel.DefaultConfig().componentObjects[ componentType ] ~= nil then
+    elseif Daneel.DefaultConfig().componentObjectsByType[ componentType ] ~= nil then
         -- built-in component type
         if componentType == "Transform" then
-            if Daneel.Config.debug.enableDebug then
-                print( errorHead.."Can't add a transform component because gameObjects may only have one transform." )
-            end
-            return
+            error( errorHead.."Can't add a transform component because game objects may only have one transform." )
         elseif componentType == "ScriptedBehavior" then
-            if Daneel.Config.debug.enableDebug then
-                print( errorHead.."To add a scripted behavior, pass the script asset or path instead of 'ScriptedBehavior' as argument 'componentType'." )
-            end
-            return
+            error( errorHead.."To add a scripted behavior, pass the script asset or path instead of 'ScriptedBehavior' as the 'componentType' argument." )
         end
 
         component = gameObject:CreateComponent( componentType )
-
-        local defaultComponentParams = Daneel.Config[ string.lcfirst( componentType ) ]
-        if defaultComponentParams ~= nil then
-            params = table.merge( defaultComponentParams, params )
-        end
         if params ~= nil then
             component:Set(params)
         end
 
-    else
-        -- custom component type
-        local componentObject = Daneel.Config.componentObjects[ componentType ]
-
-        if componentObject ~= nil and type( componentObject.New ) == "function" then
+    else -- custom component type
+        local componentObject = Daneel.Config.componentObjectsByType[ componentType ]
+        -- component object is never nil since componentType's value is checked at the beginning
+        if type( componentObject.New ) == "function" then
             component = componentObject.New( gameObject, params )
         else
-            if Daneel.Config.debug.enableDebug then
-                error( errorHead.."Custom component of type '"..componentType.."' does not provide a New() function; Can't create the component." )
-            end
-            return
+            error( errorHead.."Can't create custom component of type '"..componentType.."' because the component object does not provide a New() function." )
         end
     end
 
@@ -3840,13 +4452,7 @@ function GameObject.AddComponent( gameObject, componentType, params )
     return component
 end
 
-
-----------------------------------------------------------------------------------
--- Get components
-
 GameObject.oGetComponent = GameObject.GetComponent
-GameObject.oGetScriptedBehavior = GameObject.GetScriptedBehavior
-
 --- Get the first component of the provided type attached to the game object.
 -- @param gameObject (GameObject) The game object.
 -- @param componentType (string or Script) The component type, or script asset or path.
@@ -3865,9 +4471,9 @@ function GameObject.GetComponent( gameObject, componentType )
         component = gameObject[ lcComponentType ]
     end
     if component == nil then
-        if Daneel.DefaultConfig().componentObjects[ componentType ] ~= nil then
+        if Daneel.DefaultConfig().componentObjectsByType[ componentType ] ~= nil then
             component = GameObject.oGetComponent( gameObject, componentType )
-        elseif Daneel.Config.componentObjects[ componentType ] == nil then -- not a custom component either
+        elseif Daneel.Config.componentObjectsByType[ componentType ] == nil then -- not a custom component either
             local script = Asset.Get( componentType, "Script", true ) -- componentType is the script path or asset
             component = GameObject.oGetScriptedBehavior( gameObject, script )
         end
@@ -3875,6 +4481,7 @@ function GameObject.GetComponent( gameObject, componentType )
     return component
 end
 
+GameObject.oGetScriptedBehavior = GameObject.GetScriptedBehavior
 --- Get the provided scripted behavior instance attached to the game object.
 -- @param gameObject (GameObject) The game object.
 -- @param scriptNameOrAsset (string or Script) The script name or asset.
@@ -3884,31 +4491,16 @@ function GameObject.GetScriptedBehavior( gameObject, scriptNameOrAsset )
     return GameObject.oGetScriptedBehavior( gameObject, script )
 end
 
-
-----------------------------------------------------------------------------------
--- Destroy game object
-
---- Destroy the game object at the end of this frame.
--- @param gameObject (GameObject) The game object.
-function GameObject.Destroy( gameObject )
-    for i, go in pairs( gameObject:GetChildren( true, true ) ) do -- recursive, include self
-        go:RemoveTag()
-    end
-    for key, value in pairs( gameObject ) do
-        if key ~= "inner" and type( value ) == "table" then -- in the Webplayer inner is a regular object, considered of type table and not userdata
-            Daneel.Event.Fire( value, "OnDestroy", value )
-        end
-    end
-    gameObject._name = gameObject:GetName() -- used by GameObject.__tostring()
-    CraftStudio.Destroy( gameObject )
-end
-
-
-----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Tags
 
 GameObject.Tags = {}
--- GameObject.Tags is emptied in Tag.Awake() below
+
+Daneel.modules.Tags = {
+    Awake = function()
+        GameObject.Tags = {}
+    end
+}
 
 --- Returns the game object(s) that have all the provided tag(s).
 -- @param tag (string or table) One or several tag(s) (as a string or table of strings).
@@ -4027,8 +4619,8 @@ local _t = { "tag", {"string", "table"} }
 local _go = { "gameObject", "GameObject" }
 
 table.mergein( Daneel.Debug.functionArgumentsInfo, {
-    ["GameObject.New"] =         { { "name", { s, "Scene" } }, { "params", t, isOptional = true } },
-    ["GameObject.Instantiate"] = { { "name", s }, { "sceneNameOrAsset", { s, "Scene" } }, { "params", t, isOptional = true } },
+    ["GameObject.New"] =         { { "name", s }, { "params", { t, "GameObject" }, isOptional = true } },
+    ["GameObject.Instantiate"] = { { "name", s }, { "sceneNameOrAsset", { s, "Scene" } }, { "params", { t, "GameObject" }, isOptional = true } },
     ["GameObject.Set"] =         { _go, _p },
     ["GameObject.Get"] =         { { "name", { s, "GameObject" } }, { "errorIfGameObjectNotFound", defaultValue = false } },
     ["GameObject.Destroy"] =     { _go },
@@ -4036,11 +4628,9 @@ table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["GameObject.SetParent"] =          { _go, { "parentNameOrInstance", { s, "GameObject" }, isOptional = true }, { "keepLocalTransform", defaultValue = false } },
     ["GameObject.GetChild"] =           { _go, { "name", s, isOptional = true }, { "recursive", defaultValue = false } },
     ["GameObject.GetChildren"] =        { _go, { "recursive", defaultValue = false }, { "includeSelf", defaultValue = false } },
-    ["GameObject.GetChildrenByName"] =  { _go, { "recursive", defaultValue = false }, { "includeSelf", defaultValue = false } },
     ["GameObject.GetInAncestors"] =     { _go, { "searchFunction", "function" } },
 
     ["GameObject.SendMessage"] =      { _go, { "functionName", s }, { "data", t, isOptional = true } },
-    ["GameObject.BroadcastMessage"] = { _go, { "functionName", s }, { "data", t, isOptional = true } },
 
     ["GameObject.AddComponent"] =        { _go, { "componentType", { s, "Script" } }, { "params", t, isOptional = true } },
     ["GameObject.GetComponent"] =        { _go, { "componentType", { s, "Script" } } },
@@ -4052,13 +4642,6 @@ table.mergein( Daneel.Debug.functionArgumentsInfo, {
     ["GameObject.RemoveTag"] =  { _go, { "tag", {"string", "table"}, isOptional = true } },
     ["GameObject.HasTag"] =     { _go, _t, { "atLeastOneTag", defaultValue = false } },
 } )
-
-
-Daneel.modules.Tags = {
-    Awake = function()
-        GameObject.Tags = {}
-    end
-}
 
 -- GUI.lua
 -- Module adding the GUI components
@@ -4133,7 +4716,6 @@ function GUI.ToPixel( value, screenSide, camera )
                 value = 0
             end
             value = screenSize[ screenSide ] + tonumber( value )
-
         elseif value:find( "u" ) then
             if camera == nil then
                 error( "GUI.ToPixel(value, camera) : Can't convert the value '"..value.."' from pixels to scene units because no camera component has been passed as argument.")
@@ -5138,7 +5720,9 @@ function GUI.TextArea.SetText( textArea, text )
                     if textArea.textRuler:GetTextWidth( newLine ) * textAreaScale.x > areaWidth then
                         if char == " " then
                             table.insert( lines, newLine:sub( 1, #newLine-1 ) )
-                            newLine = char
+                            newLine = "" 
+                            -- Having `""` instead of `char` will delete all spaces at the beginning of a line
+                            -- this not necessarily something that is wanted...
                         else
                             -- the end of the line is inside a word
                             -- go backward to find the first space char and cut the line there
@@ -5507,7 +6091,7 @@ function GUI.DefaultConfig()
             opacity = nil,
         },
 
-        componentObjects = {
+        componentObjectsByType = {
             Hud = GUI.Hud,
             Toggle = GUI.Toggle,
             ProgressBar = GUI.ProgressBar,
@@ -5522,7 +6106,7 @@ function GUI.DefaultConfig()
             hud = {"position", "localPosition", "layer", "localLayer"},
             progressBar = {"value", "height"},
             slider = {"value"},
-            textArea = {"areaWidth", "lineHeight", "opacity"},
+            textArea = {"text", "areaWidth", "lineHeight", "opacity"},
         }
     }
 
@@ -5987,7 +6571,7 @@ function Draw.DefaultConfig()
             model = nil, -- model name or asset
         },
         
-        componentObjects = {
+        componentObjectsByType = {
             LineRenderer = Draw.LineRenderer,
             CircleRenderer = Draw.CircleRenderer,
         },
@@ -6022,10 +6606,9 @@ ColorMT = {
 
     __index = function( object, key )
         -- allow to get new Color instance from colors in the Color.colorsByname table by writing "Color.blue", "Color.red", ...
-        for name, colorArray in pairs( Color.colorsByName ) do
-            if key == name then
-                return Color.New( colorArray )
-            end
+        local colorArray = Color.colorsByName[ key:lower() ]
+        if colorArray ~= nil then
+            return Color.New( colorArray )
         end
     end
 }
@@ -6033,30 +6616,17 @@ ColorMT = {
 setmetatable(Color, ColorMT)
 
 function Color.__index( color, key )
-    if Color[ key ] ~= nil then
-        return Color[ key ]
-    end
-
-    if key == 1 or key == 2 or key == 3 then
-        local comps = {"r", "g", "b"}
-        key = comps[key]
-    end
-
-    if key == "r" or key == "g" or key == "b" then
-        return color[ "_"..key ]
-    end
-
-    return rawget( color, key )
+    local comps = {"r", "g", "b"}
+    key = comps[key] or key -- if key was == 1, 2 or 3; key is now r, g or b
+    return Color[ key ] or color[ "_"..key ] or rawget( color, key )
 end
 
 function Color.__newindex( color, key, value )
-    if key == 1 or key == 2 or key == 3 then
-        local comps = {"r", "g", "b"}
-        key = comps[key]
-    end
+    local comps = {"r", "g", "b"}
+    key = comps[key] or key 
 
     if key == "r" or key == "g" or key == "b" then
-        color["_"..key] = math.round( math.clamp( tonumber( value ), 0, 255 ) )
+        color["_"..key] = math.round( math.clamp( tonumber( value ), 0, 255 ), 0 )
     else
         rawset( color, key, value )
     end
@@ -6078,7 +6648,6 @@ end
 -- @return (Color) The color object.
 function Color.New(r, g, b)
     local color = setmetatable({}, Color)
-
     if type( r ) == "string" and g == nil then
         local colorFromName = Color[r] -- r is a color name
         if colorFromName ~= nil then
@@ -6107,29 +6676,26 @@ function Color.New(r, g, b)
         color.g = g or color._r
         color.b = b or color._g
     end
-
     return color
 end
-
---------------------
 
 Color.colorsByName = {
     -- values can be array, Color or hex color
     red = {255,0,0},
     green = {0,255,0},
     blue = {0,0,255},
-
     yellow = {255,255,0},
     cyan = {0,255,255},
     magenta = {255,0,255},
-
     white = {255,255,255},
     black = {0,0,0},
-    gray = {50,50,50},
-    grey = {50,50,50}, -- English spelling
 }
 -- More color/names : https://github.com/franks42/colors-rgb.lua/blob/master/colors-rgb.lua
 -- Note that some of these colors can't be displayed by the current algorithm.
+
+for name, colorArray in pairs( Color.colorsByName ) do
+    Color.colorsByName[name] = Color.New(colorArray)
+end
 
 --- Return the name of the color, provided it can be found in the `Color.colorsByName` object.
 -- @param color (Color) The color object.
@@ -6146,7 +6712,8 @@ function Color.GetName( color )
     end
 end
 
---------------------
+--------------------------------------------------------------------------------
+-- Object format conversion
 
 --- Convert the provided color object to an array.
 -- Allow to loop on the color's components in order.
@@ -6175,7 +6742,7 @@ end
 --- Returns a string representation of the color's components, each component being separated y a space.
 -- ie: For a color { 10, 250, 128 }, the returned string would be "10 250 128".
 -- Such string can be converted back to a color object with string.tocolor()
--- @param color (Color) The color obejct.
+-- @param color (Color) The color object.
 -- @return (string) The string.
 function Color.ToString( color )
     return color._r.." "..color._g.." "..color._b
@@ -6195,7 +6762,8 @@ function string.tocolor( sColor )
     return color
 end
 
---------------------
+--------------------------------------------------------------------------------
+-- Hex / HSV / RGB conversion
 
 --- Return the hexadecimal representation of the provided color or r, g, b components.
 -- Only return the 6 characters of the component's values, so you may want to prefix it with "#" or "0x" yourself.
@@ -6203,28 +6771,29 @@ end
 -- @param g (number) [optional] The color's green component.
 -- @param b (number) [optional] The color's blue component.
 function Color.RGBToHex( r, g, b )
-    -- From : https://gist.github.com/marceloCodget/3862929    
+    -- From : https://gist.github.com/marceloCodget/3862929
     local colorArray = Color.New( r, g, b ):ToArray()
     local hexadecimal = ""
-     
-    for key, value in ipairs(colorArray) do
+
+    for key=1, 3 do
+        local value = colorArray[key]
         local hex = ''
-        
+
         while value > 0 do
             local index = math.fmod(value, 16) + 1
             value = math.floor(value / 16)
-            hex = string.sub('0123456789ABCDEF', index, index) .. hex   
+            hex = string.sub('0123456789ABCDEF', index, index) .. hex
         end
-         
+
         if string.len(hex) == 0 then
             hex = '00'
         elseif string.len(hex) == 1 then
             hex = '0' .. hex
         end
-         
+
         hexadecimal = hexadecimal .. hex
     end
-    
+
     return hexadecimal
 end
 
@@ -6252,9 +6821,8 @@ end
 -- @param hex (string) The color's hexadecimal representation.
 function Color.SetHex( color, hex )
     local rgb = { Color.HexToRGB( hex ) }
-    local comps = { "r", "g", "b" }
     for i=1, 3 do
-        color[ comps[i] ] = rgb[i]
+        color[i] = rgb[i]
     end
 end
 
@@ -6270,8 +6838,8 @@ function Color.GetHSV( color )
     local h, s, v
     v = max
     local d = max - min
-    
-    if max == 0 then 
+
+    if max == 0 then
         s = 0
     else
         s = d / max
@@ -6285,9 +6853,9 @@ function Color.GetHSV( color )
             if g < b then
                 h = h + 6
             end
-        elseif max == g then 
+        elseif max == g then
             h = (b - r) / d + 2
-        elseif max == b then 
+        elseif max == b then
             h = (r - g) / d + 4
         end
         h = h / 6
@@ -6295,7 +6863,8 @@ function Color.GetHSV( color )
     return h, s, v
 end
 
---------------------
+--------------------------------------------------------------------------------
+-- Operator functions
 
 --- Allow to check for the equality between two Color objects using the == comparison operator.
 -- @param a (Color) The left member.
@@ -6312,9 +6881,9 @@ end
 -- @return (Color) The new color object.
 function Color.__add( a, b )
     return Color.New( a._r + b._r, a._g + b._g, a._b + b._b )
-end  
+end
 
---- Allow to substract two Color objects by using the - operator.
+--- Allow to subtract two Color objects by using the - operator.
 -- Ie : color1 - color2
 -- @param a (Color) The left member.
 -- @param b (Color) The right member.
@@ -6366,93 +6935,28 @@ function Color.__div( a, b )
     end
     return color
 end
-   
+
 ----------------------------------------------------------------------------------
+-- Solver
 
--- Bc : Back color
--- Fc : Front color
--- Fo : Front opacity (back opacity is always 1)
--- Tc : Target color, the one we see
-
--- Relations :
--- Bc = ( Fc * Fo - Tc ) / ( Fo - 1 )
--- Fc = ( Tc - Bc ) / Fo + Bc
--- Fo = ( Tc - Bc ) / ( Fc - Bc )
--- Tc = ( Fc - Bc ) * Fo + Bc
-
--- if Bc = 0 then Tc = 255 * Fo
--- if Bc = 255 then Tc = Fc
-
--- With a set of 6 predetermined colors Red, Green, Blue, Magenta, Cyan, Yellow
--- We can create 2295 (255*2*3+255*3) colors
-
--- The generator can create colors where :
--- One of the component is equal to 0 or 255 and the mean of the other components is 128 (they are apart and equidistant from 128)
--- ie : (255, 50, 200) (128, 0, 128) (170, 85, 0)
--- or
--- Two components are equal and the third one is apart and equidistant from 128 ((max + min)/2 = 128)
--- ie : (153, 102, 153) (51, 51, 204)
--- or
--- one comp = 0, other comp = 255, on
--- or
--- a plain color (R, g, b, c, m, y, black, w) with saturation or value diminished
-
-
--- circle : one comp = 0, other are equidistant
--- hexagon : cyan-magenta-yellow = one comp = 255, others are equidistant
--- calque 3 :    two color equal, other equidistant
--- star : one or two at 255, othe is moving    only saturation is moving
-
-
--- white model change the saturation    opa = 0.5 > sat =      opa = 0.3  sat = 70
--- black model change   opa = 0.3 sat = 
-
--- sat = 0   > rgb coords goes toward the highmost coords
--- sat correspond to the smallest component value
--- sat = 100 - lowest comp / highest comp * 100
--- or (max - min ) / max  if min and max are on 0-1 range
-
--- value = 0   > rgb coords goes toward the smallest coords
--- value correspond to the smallest component value
-
--- Calculate the opacity of the front model.
--- @param Bc (color) The back color.
--- @param Fc (color) The front color.
--- @param Tc (color) The target color.
--- @return (number) The front opacity.
-local function getFrontOpacity( Bc, Fc, Tc )
-    local Fo = 0
-
-    -- Find the component for which the back and front color haven't the same value
-    -- because it would cause a division by zero in the opacity's calculation
-    local comp = nil
-    local comps = { "r", "g", "b" }
-    for i, _comp in ipairs( comps ) do
-        if Fc[_comp] ~= Bc[_comp] then
-            comp = _comp
-            break
-        end
-    end
-    
-    if comp ~= nil then
-        Fo = math.round( (Tc[comp] - Bc[comp]) / (Fc[comp] - Bc[comp]), 3 )
-    else
-        print("getFrontOpacity(): can't calculate opacity because no suitable component was found", Bc, Fc, Tc)
-    end
-    
-    return Fo
-end
-
---- Find the Back and Front color and the Front opacity needed to render the provided Target color.
+-- Find the Back and Front color and the Front opacity needed to render the provided Target color.
 -- @param Tc (color) The target color.
 -- @return (Color) The back color.
 -- @return (Color) The front color, or nil.
 -- @return (number) The front opacity.
-function Color.Resolve( Tc )
+-- @return (Color) The result color. Will be different from Tc when the system can't render Tc.
+function Color._resolve( Tc )
+    -- Back color       
+    -- Bc = ( Fc * Fo - Tc ) / ( Fo - 1 )
+    -- Front color
+    -- Fc = ( Tc - Bc ) / Fo + Bc
+    -- Front Opacity
+    -- Fo = ( Tc - Bc ) / ( Fc - Bc ) 
+    -- Target color
+    -- Tc = ( Fc - Bc ) * Fo + Bc
+
     local Bc = Color.New(0)
     local Fc = Color.New(0)
-    local Fo = 0
-
     for comp, value in pairs( Tc:ToRGB() ) do
         if value ~= 255 and value >= 127.5 then
             Bc[comp] = 255
@@ -6465,35 +6969,97 @@ function Color.Resolve( Tc )
             Fc[comp] = value
         end
     end
-    
     if Fc == Bc then
         Fc = nil
     end
 
+    local Rc = Bc -- result/rendered color
+    local Fo = 0
     if Fc ~= nil then
-        Fo = getFrontOpacity( Bc, Fc, Tc )
-        -- actual color
-        local Ac = Color.New( ( Fc:ToVector3() - Bc:ToVector3() ) * Fo + Bc:ToVector3() )
-        
-        if Ac ~= Tc then
-            -- the Tc color can't be achieved with only two levels of color
-            -- a thrid one is needed
-            print("Color.Resolve(): Sorry, can't resolve ", Tc )
-            print("Color.Resolve(): Getting instead ", Ac )
+        Fo = Color._getFrontOpacity( Bc, Fc, Tc )
+        Rc = Color.New( ( Fc:ToVector3() - Bc:ToVector3() ) * Fo + Bc:ToVector3() )
+
+        if Rc ~= Tc then
+            -- the Tc color can't be achieved with only two levels of color, a thrid one is needed
+            print("Color._resolve(): Sorry, can't resolve target color [1], getting [2] instead", Tc, Rc )
         end
     end
 
-    return Bc, Fc, Fo
+    return Bc, Fc, Fo, Rc
 end
 
---------------------
+-- Calculate the opacity of the front renderer.
+-- @param Bc (color) The back color.
+-- @param Fc (color) The front color.
+-- @param Tc (color) The target color.
+-- @return (number) The front opacity.
+function Color._getFrontOpacity( Bc, Fc, Tc )
+    -- Find the component for which the back and front color haven't the same value
+    -- because it would cause a division by zero in the opacity's calculation
+    local comp = nil
+    local comps = { "r", "g", "b" }
+    for i=1, 3 do
+        local _comp = comps[i]
+        if Fc[_comp] ~= Bc[_comp] then
+            comp = _comp
+            break
+        end
+    end
+
+    if comp ~= nil then
+        -- Fo = ( Tc - Bc ) / ( Fc - Bc ) 
+        return math.round( (Tc[comp] - Bc[comp]) / (Fc[comp] - Bc[comp]), 3 )
+    else
+        print("Color._getFrontOpacity(): can't calculate opacity because no suitable component was found", Bc, Fc, Tc) 
+        return 1
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Asset
+
+Color.colorAssetsFolder = "Colors/" -- to be edited by the user if he wants another folder
+
+-- Get the asset (Model or Font) corresponding to the provided color.
+-- The color must have been set in the Color.colorsByName table.
+-- @param color (Color) The color object.
+-- @param assetType (string) The asset type ("Model" or "Font")
+-- @param assetFolder (string) [optional] The asset folder to get the asset from.
+-- @return (Model or Font) The asset, or nil.
+function Color._getAsset( color, assetType, assetFolder )
+    if not string.endswith( Color.colorAssetsFolder, "/" ) then -- let's be fool-proof
+        Color.colorAssetsFolder = Color.colorAssetsFolder.."/"
+    end
+    assetFolder = assetFolder or Color.colorAssetsFolder
+
+    local name = color:GetName() -- name may be nil !
+    if name == nil then
+        if Daneel.Config.debug.enableDebug == true then
+            print("Color._getAsset(): Can't find the name of the provided color", color, "It must be set in the Color.colorsByName table.")
+        end
+        return nil
+    end
+
+    local path = assetFolder..name
+    local asset = CS.FindAsset( path, assetType )
+    if asset == nil then
+        path = assetFolder..string.ucfirst(name) -- let's be a little more fool-proof
+        asset = CS.FindAsset( path, assetType )
+    end
+
+    if asset == nil and Daneel.Config.debug.enableDebug == true then
+        print("Color._getAsset(): Could not find asset of type '"..assetType.."' at path '"..path.."' for ", color)
+    end
+    return asset
+end
+
+--------------------------------------------------------------------------------
+-- Set color
 
 -- Set the color of the provided model or text renderer.
 -- @param renderer (ModelRenderer or TextRenderer) The renderer.
--- @param r (number, Color or string) The color's red component, a color object, a color as hexadecimal string or a color name that can be found in the Color.colorsByName table.
--- @param g (number) [optional] The color's green component.
--- @param b (number) [optional] The color's blue component.
-local function setColor( renderer, r, g, b )
+-- @param color (Color) The color instance.
+function Color._setColor( renderer, color )
     local rendererType, assetType, assetSetterFunction, assetGetterFunction
     local mt = getmetatable( renderer )
     if mt == ModelRenderer then
@@ -6508,23 +7074,28 @@ local function setColor( renderer, r, g, b )
         assetGetterFunction = TextRenderer.GetFont
     end
 
-    local color = Color.New( r, g, b )
-    local Bc, Fc, Fo = color:Resolve()
-    
+    local Bc, Fc, Fo = color:_resolve()
+
+    local gameObject = renderer.gameObject
+    local frontRndr = gameObject.frontColorRenderer
+
     -- back
-    local newAsset = Bc:GetAsset( assetType )
+    local assetFolder = nil
     local oldAsset = assetGetterFunction( renderer )
+    if oldAsset ~= nil then
+        assetFolder = oldAsset:GetPath():gsub(oldAsset.name, "") -- with trailing slash
+    end
+
+    local newAsset = Bc:_getAsset( assetType, assetFolder )
     if oldAsset ~= newAsset then
         assetSetterFunction( renderer, newAsset )
     end
-    
+
     -- front
-    local gameObject = renderer.gameObject
-    local frontRndr = gameObject[ "front"..rendererType ]
     if frontRndr == nil and Fc ~= nil then
         frontRndr = gameObject:CreateComponent( rendererType )
         gameObject[ string.lcfirst( rendererType ) ] = renderer
-        gameObject[ "front"..rendererType ] = frontRndr
+        gameObject.frontColorRenderer = frontRndr
 
         if rendererType == "TextRenderer" then
             frontRndr:SetAlignment( renderer:GetAlignment() )
@@ -6533,44 +7104,39 @@ local function setColor( renderer, r, g, b )
 
     if frontRndr ~= nil then
         if Fc ~= nil then
-            local newAsset = Fc:GetAsset( assetType )
+            local newAsset = Fc:_getAsset( assetType, assetFolder )
             local oldAsset = assetGetterFunction( frontRndr )
-            if oldAsset ~= newAsset then 
-                -- setting a new Font asset everytime the function was called make the test project actually lag
+            if oldAsset ~= newAsset then
+                -- setting a new Font asset every time the function was called make the test project actually lag
                 -- setting big Font asset seems very slow
                 assetSetterFunction( frontRndr, newAsset )
             end
         end
-        
-        if Fo ~= frontRndr:GetOpacity() then
-            frontRndr:SetOpacity( Fo )
-        end
+
+        frontRndr.Fo = Fo
+        frontRndr:SetOpacity( Fo * renderer:GetOpacity() )
     end
 end
 
 --- Set the color of the provided model renderer.
 -- @param modelRenderer (ModelRenderer) The model renderer.
--- @param r (number, Color or string) The color's red component, a color object, a color as hexadecimal string or a color name that can be found in the Color.colorsByName table.
--- @param g (number) [optional] The color's green component.
--- @param b (number) [optional] The color's blue component.
-function ModelRenderer.SetColor( modelRenderer, r, g, b )
-    setColor( modelRenderer, r, g, b )
+-- @param color (Color) The color instance.
+function ModelRenderer.SetColor( modelRenderer, color )
+    Color._setColor( modelRenderer, color )
 end
 
 --- Set the color of the provided text renderer.
 -- @param textRenderer (textRenderer) The text renderer.
--- @param r (number, Color or string) The color's red component, a color object, a color as hexadecimal string or a color name that can be found in the Color.colorsByName table.
--- @param g (number) [optional] The color's green component.
--- @param b (number) [optional] The color's blue component.
-function TextRenderer.SetColor( textRenderer, r, g, b )
-    setColor( textRenderer, r, g, b )
+-- @param color (Color) The color instance.
+function TextRenderer.SetColor( textRenderer, color )
+    Color._setColor( textRenderer, color )
 end
 
 local oSetText = TextRenderer.SetText
 function TextRenderer.SetText( textRenderer, text )
     oSetText( textRenderer, text )
-    
-    local frontRndr = textRenderer.gameObject.frontTextRenderer
+
+    local frontRndr = textRenderer.gameObject.frontColorRenderer
     if frontRndr ~= nil then
         oSetText( frontRndr, text )
     end
@@ -6579,22 +7145,38 @@ end
 local oSetAlignment = TextRenderer.SetAlignment
 function TextRenderer.SetAlignment( textRenderer, alignment )
     oSetAlignment( textRenderer, alignment )
-    
-    local frontRndr = textRenderer.gameObject.frontTextRenderer
+
+    local frontRndr = textRenderer.gameObject.frontColorRenderer
     if frontRndr ~= nil then
         oSetAlignment( frontRndr, alignment )
     end
 end
 
---------------------
+-- Set the opacity of the back and front model or text renderer.
+-- @param renderer (ModelRenderer or TextRenderer) The (back) model or text renderer.
+-- @param opacity (number) The opacity.
+function Color._setOpacity( renderer, opacity )
+    renderer:oSetOpacity( opacity )
+    local frontRndr = renderer.gameObject.frontColorRenderer
+    if frontRndr ~= nil and renderer ~= frontRndr then
+        local Fo = frontRndr.Fo or 1
+        frontRndr:oSetOpacity( Fo * opacity )
+    end
+end
+
+ModelRenderer.oSetOpacity = ModelRenderer.SetOpacity
+ModelRenderer.SetOpacity = Color._setOpacity
+
+TextRenderer.oSetOpacity = TextRenderer.SetOpacity
+TextRenderer.SetOpacity = Color._setOpacity
+
+--------------------------------------------------------------------------------
+-- Get color
 
 -- Get the color of the provided model or text renderer.
 -- @param renderer (ModelRenderer or TextRenderer) The model or text renderer.
 -- @return Rc (Color) The result/rendered color (the one you see).
--- @return Bc (Color) The back color.
--- @return Fc (Color) The front color.
--- @return Fo (number) The front opacity.
-local function getColor( renderer )
+function Color._getColor( renderer )
     local rendererType, assetGetterFunction
     local mt = getmetatable( renderer )
     if mt == ModelRenderer then
@@ -6604,94 +7186,126 @@ local function getColor( renderer )
         rendererType = "TextRenderer"
         assetGetterFunction = TextRenderer.GetFont
     end
-    
+
     local Bc, Fc, Rc
-    local Fo = 0
 
     -- back
     local asset = assetGetterFunction( renderer )
     if asset ~= nil then
         Bc = Color[ asset:GetName() ]
     end
-    
+
     -- front
-    local gameObject = renderer.gameObject
-    local frontRndr = gameObject[ "front"..rendererType ]
-    if frontRndr ~= nil then
-        local asset = assetGetterFunction( frontRndr ) 
+    local frontRndr = renderer.gameObject.frontColorRenderer
+    local Fo = 1
+    if frontRndr ~= nil and Bc ~= nil then
+        Fo = frontRndr.Fo or 1
+        local asset = assetGetterFunction( frontRndr )
         if asset ~= nil then
             Fc = Color[ asset:GetName() ]
         end
-        Fo = frontRndr:GetOpacity()
     end
 
-    if Bc ~= nil and Fc ~= nil then
-        Rc = Color.New( ( Fc:ToVector3() - Bc:ToVector3() ) * Fo + Bc:ToVector3() )
+    if Bc ~= nil then
+        if Fc ~= nil then
+            Rc = Color.New( ( Fc:ToVector3() - Bc:ToVector3() ) * Fo + Bc:ToVector3() )
+        else
+            Rc = Bc
+        end
     end
-
-    return Rc, Bc, Fc, Fo
+    return Rc
 end
 
 --- Get the color of the provided model renderer.
 -- @param modelRenderer (ModelRenderer) The model renderer.
 -- @return Rc (Color) The result/renderer color (the one you see).
--- @return Bc (Color) The back color.
--- @return Fc (Color) The front color.
--- @return Fo (number) The front opacity.
 function ModelRenderer.GetColor( modelRenderer )
-    return getColor( modelRenderer )
+    return Color._getColor( modelRenderer )
 end
 
 --- Get the color of the provided text renderer.
 -- @param textRenderer (textRenderer) The text renderer.
 -- @return Rc (Color) The result/renderer color (the one you see).
--- @return Bc (Color) The back color.
--- @return Fc (Color) The front color.
--- @return Fo (number) The front opacity.
 function TextRenderer.GetColor( textRenderer )
-    return getColor( textRenderer )
+    return Color._getColor( textRenderer )
 end
 
---------------------
+--------------------------------------------------------------------------------
+-- Random
 
-Color.colorAssetsFolder = "Colors/" -- to be edited by the user if he wants another folder
+Color.Pattern = {
+    DesaturedPlainColor = 1,
+    DeValuedPlainColor = 2,
+    Any0255 = 3, -- one comp = 0, other comp = 255, other comp may have any value
 
-Color.modelsByColorName = {}
-Color.fontsByColorName = {}
+    -- These names are dumb... (FIXME)
+    ["21128"] = 4, -- Two components are equal and the third one is apart and equidistant from 128 (their mean is 128 ((max + min)/2 = 128)) : ie : (153, 102, 153) (51, 51, 204)
+    ["0128"] = 5, -- One of the component is equal to 0 or 255 and the two others are apart and equidistant from 128 (their mean is 128 ((max + min)/2 = 128))   ie : (255, 50, 200) (128, 0, 128) (170, 85,
+}
 
---- Get the asset (Model or Font) corresponding to the provided color
--- Normally, the provided color can only be Red, Green, Blue, Magenta, Yellow, Cyan, Black or White.
--- @param color (Color) The color object.
--- @param assetType (string) The asset type ("Model" or "Font")
--- @return (Model or Font) The asset, or nil.
-function Color.GetAsset( color, assetType )
-    local name = color:GetName()
-    local lcAssetType = string.lower( assetType )
-    local assetsByColorName = Color[ lcAssetType.."sByColorName" ]
-    local asset = assetsByColorName[ name ]
+Color.PatternsById = {}
+for name, id in pairs( Color.Pattern ) do
+    Color.PatternsById[ id ] = name
+end
 
-    if asset == nil then
-        if not string.endswith( Color.colorAssetsFolder, "/" ) then -- let's be fool-proof
-            Color.colorAssetsFolder = Color.colorAssetsFolder.."/"
+--- Returns a random color, optional of the provided pattern.
+-- @param pattern (number or Color.Patterns) [optional] The color pattern.
+-- @return (Color) The color.
+function Color.GetRandom( pattern )
+    -- sekect pattern
+    pattern = pattern or math.random( #Color.PatternsById )
+
+    local plainColors = table.copy( Color.colorsByName )
+    plainColors.black = nil
+    plainColors = table.getvalues( plainColors )
+    -- plainColors contains r, g, b, y, c, m, w
+
+    local color = Color.New(0)
+    if pattern == 1 then
+        -- desat plain color
+        local baseColor = Color.New( plainColors[ math.random( #plainColors ) ] )
+        color = baseColor + Color.New( math.random( 0, 255 )  ) -- this move the components which where at 0 closer to 255
+
+    elseif pattern == 2 then
+        -- devalue plain color
+        local baseColor = Color.New( plainColors[ math.random( #plainColors ) ] )
+        color = baseColor - Color.New( math.random( 0, 255 ) ) -- this move the components which where at 0 closer to 255
+
+    elseif pattern == 3 then
+        -- 0, 255, any | 0, any, 255 | 255, 0, any | 255, any, 0 | any, 0, 255 | any, 255, 0
+        local values = { 0, 255, math.random( 0, 255 ) }
+        for i=1, 3 do
+            color[i] = table.remove( values, math.random( #values ) )
         end
 
-        local path = Color.colorAssetsFolder..name
-        asset = CS.FindAsset( path, assetType )
-        
-        if asset == nil then
-            path = Color.colorAssetsFolder..string.ucfirst(name) -- let's be a little more fool-proof
-            asset = CS.FindAsset( path, assetType )
+    elseif pattern == 4 then
+        -- Two components are equal and the third one is apart and equidistant from 128 (their mean is 128 ((max + min)/2 = 128)) : ie : (153, 102, 153) (51, 51, 204)
+        local min = math.random(0, 128)
+        local max = 255 - min
+        local other = min
+        if math.random(2) == 1 then
+            other = max
+        end
+        local values = { min, max, other }
+        for i=1, 3 do
+            color[i] = table.remove( values, math.random( #values ) )
         end
 
-        if asset == nil then
-            print("Color.GetAsset(): Could not find asset of type '"..assetType.."' at path '"..path.."' for ", color)
-            return
+    elseif pattern == 5 then
+        -- One of the component is equal to 0 or 255 and the two others are apart and equidistant from 128 (their mean is 128 ((max + min)/2 = 128))   ie : (255, 50, 200) (128, 0, 128) (170, 85,
+        local min = math.random(0, 128)
+        local max = 255 - min
+        local other = 0
+        if math.random(2) == 1 then
+            other = 255
         end
-
-        assetsByColorName[ name ] = asset
+        local values = { min, max, other }
+        for i=1, 3 do
+            color[i] = table.remove( values, math.random( #values ) )
+        end
     end
 
-    return asset
+    return color
 end
 
 -- Tween.lua
@@ -6749,7 +7363,6 @@ local function SetTweenerProperty(tweener, value)
         Daneel.Debug.StackTrace.EndFunction()
     end
 end
-
 
 ----------------------------------------------------------------------------------
 -- Tweener
@@ -7081,7 +7694,6 @@ function Tween.Tweener.Update(tweener, deltaDuration) -- the deltaDuration argum
     Daneel.Debug.StackTrace.EndFunction()
 end
 
-
 ----------------------------------------------------------------------------------
 -- Timer
 
@@ -7131,7 +7743,6 @@ function Tween.Timer.New( duration, callback, isInfiniteLoop, params )
     return tweener
 end
 
-
 ----------------------------------------------------------------------------------
 -- Config - Loading
 
@@ -7177,7 +7788,7 @@ function Tween.DefaultConfig()
             frameCount = 0,
         },
     
-        objects = {
+        objectsByType = {
             ["Tween.Tweener"] = Tween.Tweener,
         },
 
@@ -7199,19 +7810,17 @@ end
 Tween.Config = Tween.DefaultConfig()
 
 function Tween.Awake()
-    if Tween.Config.componentNamesByProperty == nil then
-        -- In Awake() to let other modules update Tween.Config.componentNamesByProperty from their Load() function
-        -- Actually this should be done automatically (without things to set up in the config) by looking up the functions on the components' objects
-        local t = {}
-        for compName, properties in pairs( Tween.Config.propertiesByComponentName ) do
-            for i=1, #properties do
-                local property = properties[i]
-                t[ property ] = t[ property ] or {}
-                table.insert( t[ property ], compName )
-            end
+    -- In Awake() to let other modules update Tween.Config.propertiesByComponentName from their Load() function
+    -- Actually this should be done automatically (without things to set up in the config) by looking up the functions on the components' objects
+    local t = {}
+    for compName, properties in pairs( Tween.Config.propertiesByComponentName ) do
+        for i=1, #properties do
+            local property = properties[i]
+            t[ property ] = t[ property ] or {}
+            table.insert( t[ property ], compName )
         end
-        Tween.Config.componentNamesByProperty = t
     end
+    Tween.Config.componentNamesByProperty = t
 
     -- destroy and sanitize the tweeners when the scene loads
     for id, tweener in pairs( Tween.Tweener.tweeners ) do
@@ -7315,7 +7924,6 @@ function Tween.Update()
     end -- end for tweeners
 end -- end Tween.Update
 
-
 ----------------------------------------------------------------------------------
 -- GameObject
 
@@ -7326,13 +7934,15 @@ end -- end Tween.Update
 local function resolveTarget( gameObject, property )
     local component = nil
     if 
-        Daneel.modules.GUI ~= nil and gameObject.hud ~= nil and
-        property == "position" or property == "localPosition"
+        (property == "position" or property == "localPosition") and -- let the parenthesis at the beginning of the condition, or they will be removed by Luamin !
+        GUI ~= nil and GUI.Hud ~= nil and gameObject.hud ~= nil
         -- 02/06/2014 - This is bad, this code should be handled by the GUI module itself
         -- but I have no idea how to properly set that up easily
         -- Plus I really should test the type of the endValue instead (in case it's a Vector3 for instance beacuse the user whants to work on the transform and not the hud)
     then
         component = gameObject.hud
+    elseif property == "text" and GUI ~= nil and GUI.TextArea ~= nil and gameObject.textArea ~= nil then
+        component = gameObject.textArea
     else
         local compNames = Tween.Config.componentNamesByProperty[ property ]
         if compNames ~= nil then
@@ -7370,24 +7980,6 @@ function GameObject.Animate( gameObject, property, endValue, duration, onComplet
     end
     return Tween.Tweener.New( component, property, endValue, duration, onCompleteCallback, params )   
 end
-
---- Creates an animation (a tweener) with the provided parameters and destroy the game object when the tweener has completed.
--- @param gameObject (GameObject) The game object.
--- @param property (string) The name of the property to animate.
--- @param endValue (number, Vector2, Vector3 or string) The value the property should have at the end of the duration.
--- @param duration (number) The time (in seconds) or frame it should take for the property to reach endValue.
--- @param params (table) [optional] A table of parameters.
--- @return (Tweener) The tweener.
-function GameObject.AnimateAndDestroy( gameObject, property, endValue, duration, params )
-    local component = nil
-    if params ~= nil and params.target ~= nil then
-        component = params.target
-    else
-        component = resolveTarget( gameObject, property )
-    end
-    return Tween.Tweener.New( component, property, endValue, duration, function() gameObject:Destroy() end, params )   
-end
-
 
 ----------------------------------------------------------------------------------
 -- Easing equations

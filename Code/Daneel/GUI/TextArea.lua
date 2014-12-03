@@ -22,11 +22,13 @@ cameraName string ""
 /PublicProperties]]
 
 function Behavior:Awake()
+
     if self.gameObject.textArea == nil then
         local params = {
             wordWrap = self.wordWrap,
             opacity = self.opacity
         }
+        
         local props = {"areaWidth", "lineHeight", "verticalAlignment", "newLine"}
         for i, prop in pairs( props ) do
             if string.trim( self[ prop ] ) ~= "" then
@@ -50,3 +52,4 @@ function Behavior:Awake()
         GUI.TextArea.New( self.gameObject, params )
     end
 end
+

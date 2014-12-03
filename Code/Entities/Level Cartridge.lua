@@ -8,12 +8,12 @@ function Behavior:Awake()
 end
 
 function Behavior:SetData( level )
-    local children = self.gameObject.childrenByName
-    local levelNameGO = children["Level Name"]
+    local children = self.gameObject.children
+    local levelNameGO = children[1]
     levelNameGO.textRenderer.text = level.name
     levelNameGO.levelName = level.name
     
-    local bg = children.Background
+    local bg = children[2]
     bg:AddTag("ui")
     bg.OnMouseEnter = function(go)
         levelNameGO.textRenderer.text = "          Play          "

@@ -1,23 +1,5 @@
-local t1 = { 1, 2, key = "value" }
-    local t2 = { 3, key = "other value", otherKey = "value" }
-    table.mergein( t1, t2 )
-    
-    table.print( t1 ) -- this print in the Runtime Report :
 
 
-    t1.t1 = t1
-    t1.table2 = {
-        
-        1, key = "value", t1 = t1,
-        t3 = {
-            otherKey = 1,
-            2
-        }
-    }
-    
-
-    table.rprint( t1 ) -- this print in the Runtime Report :
-    
 function Behavior:Awake()
     Scene.Append("Main/Background")
     
@@ -84,5 +66,4 @@ end
 function Behavior:Start()
     local levelsButton = GameObject.Get("Icons.Levels.Renderer")
     levelsButton:FireEvent("OnLeftClickReleased", levelsButton) -- Select levels window
-    
 end
