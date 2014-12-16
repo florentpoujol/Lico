@@ -1,4 +1,89 @@
 
+local knownKeysByPrintedTable = {}
+local currentlyPrintedTable = nil
+
+--- Recursively print all key/value pairs within the provided table.
+-- Fully prints the tables that have no metatable found as values.
+-- @param t (table) The table to print.
+-- @param maxLevel (number) [default=10] The max recursive level. Clamped between 1 and 10.
+-- @param reprint (boolean) [default=false] Tell whether to print again the content of already printed table. If false a message "Already printed table with key" will be displayed as the table's value. /!\ See above for warning when maxLevel argument is -1.
+function table.printr( t, maxLevel, reprint, currentLevel  )
+    maxLevel = math.clamp( maxLevel or 10, 1, 10 )
+    if reprint == nil then
+        reprint = false
+    end
+    currentLevel = currentLevel or 1
+    local sLevel = string.rep( "| - - - ", currentLevel-1 ) -- string level
+
+    if t == nil then
+        print(level.."table.printr2( t ) : Provided table is nil.")
+        return
+    end
+
+    if currentLevel == 1 then
+        for i=1, #t do
+            local value = t[i]
+            if type( value ) == "table" and getmetatable( value ) == nil then
+                --knownKeysByPrintedTable[ value ] = i
+            end
+        end
+    
+    
+        print("~~~~~ table.printr("..tostring(t)..") ~~~~~ Start ~~~~~")       
+        if currentlyPrintedTable == nil then
+          currentlyPrintedTable = t
+        end
+    end   
+
+    local func = pairs
+    if table.getlength(t) == 0 then
+        print(level, "Table is empty.")
+    elseif table.isarray(t) then
+        func = ipairs -- just to be sure that the entries are printed in order
+    end
+    
+    for key, value in func(t) do
+        if type(key) == "string" then
+            key = '"'..key..'"'
+        end
+        if type(value) == "string" then
+            value = '"'..value..'"'
+        end
+        --knownKeysByPrintedTable = {}
+        if type( value ) == "table" and getmetatable( value ) == nil then
+            local knownKey = nil
+            if reprint == false then
+                knownKey = knownKeysByPrintedTable[ value ]
+            end
+            
+            if value == currentlyPrintedTable then
+                print(sLevel..tostring(key), "Table currently being printed: "..tostring(value) )
+            elseif knownKey ~= nil then
+                print(sLevel..tostring(key), "Already printed table with key "..knownKey..": "..tostring(value) )
+                
+            elseif currentLevel <= maxLevel then
+                if reprint == false then
+                    knownKeysByPrintedTable[ value ] = key
+                end
+                print(sLevel..tostring(key), value, "#"..table.getlength(value))
+                
+                table.printr( value, maxLevel, reprint, currentLevel + 1)
+            else
+                print(sLevel..tostring(key), value, "#"..table.getlength(value))
+            end
+        else
+            print(sLevel..tostring(key), value)
+        end
+    end
+
+    if currentLevel == 1 then
+        print("~~~~~ table.printr("..tostring(t)..") ~~~~~ End ~~~~~")
+        knownKeysByPrintedTable = {}
+        currentlyPrintedTable = nil
+    end
+end
+
+
 -- Allow for mouse over effect other than the tooltip
 -- Used in [Main Menu/Awake] and [Master Level/Awake]
 function InitIcons( iconGOs )

@@ -1,7 +1,6 @@
 
-
 function Behavior:Awake()
-    Scene.Append("Main/Background")
+    Scene.Append("Main/Background")  
     
     ----------
     local uiMaskGO = GameObject.Get("UI Mask")
@@ -22,8 +21,8 @@ function Behavior:Awake()
     end
     
     -- credit window   
-    local creditsGO = GameObject.Get("Icons.Credits.Renderer")
-    creditsGO:InitWindow("Windows.Credits", "mouseclick", nil, windowAnimation, "main_menu_window")
+    --local creditsGO = GameObject.Get("Icons.Credits.Renderer")
+    --creditsGO:InitWindow("Windows.Credits", "mouseclick", nil, windowAnimation, "main_menu_window")
 
     -- options
     local optionsWindowGO = GameObject.Get("Windows.Options")
@@ -60,7 +59,6 @@ function Behavior:Awake()
         CS.Screen.SetSize(Options.screenSize.x, Options.screenSize.y)
     end )
 end
-
 
 
 function Behavior:Start()

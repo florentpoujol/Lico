@@ -1,5 +1,10 @@
 
-function Behavior:Awake()
+function Behavior:Awake( s )
+    if s ~= true then
+        self:Awake(true)
+        return
+    end
+
     local bg = Scene.Append("Main/Background")
     
     ---------
@@ -106,8 +111,16 @@ function Behavior:Awake()
     local nextIconGO = GameObject.Get("Icons.Next Level.Renderer")
     self.nextIconGO = nextIconGO
     
+    if Game.levelToLoad.isRandom == true then
+        nextIconGO.textRenderer.text = "0" -- refresh
+        
+        local tooltipTextGO = nextIconGO.parent:GetChild("Tooltip.Content.Text")
+        tooltipTextGO.textRenderer.text = "Generate new level"
+    end
+    
     nextIconGO.OnLeftClickReleased = function(go)
         uiMaskGO.s:Animate(1,0.5, function()
+            print("Scene.current", Scene.current)
             Scene.Load( Scene.current )
         end )
     end
@@ -169,7 +182,7 @@ function Behavior:Awake()
 end
 
 
-function Behavior:Start()
+function Behavior:Start()    
     local func = Game.levelToLoad.initFunction 
     if func ~= nil then
         func( self )
@@ -194,14 +207,16 @@ function Behavior:UpdateLevelCamera()
    local nodes = GameObject.GetWithTag("node")
     local maxValue = 0
     for i, node in pairs(nodes) do       
-        local value = node.transform.position.y
+        local value = math.abs( node.transform.position.y )
+        print("y value", value)
         if value > maxValue then
             maxValue = value
         end
     end
 
     local scale = math.ceil(maxValue + 1) * 2
-    GameObject.Get("World Camera").camera.orthographicScale = math.max( scale, 5 ) -- min=10
+    print(scale, maxValue)
+    GameObject.Get("World Camera").camera.orthographicScale = scale -- min=10
 end
 
 
@@ -257,14 +272,7 @@ function Behavior:Update()
             if sn ~= nil then
                 sn.s:Select(false)
             end
-        end
-        
-        ----------
-        -- leaves
-        
-        --if self.frameCount % 90 == 0 then -- spawn one evry 1.5 sec
-            --Scene.Append("Entities/Leaf")
-        --end        
+        end      
     end
 end
 
@@ -294,12 +302,10 @@ function Behavior:EndLevel()
         end
     end
     
-    --self.nextIconGO.rendererGO:Display(true)
     self.nextIconGO.parent:RemoveTag("inactive_icon")
     local tooltip = self.nextIconGO.parent:GetChild("Tooltip")
     InitIcons( self.nextIconGO.parent )
     tooltip:Display()
-    
-    --self.nextIconGO:OnMouseEnter() -- makes the tooltip show so that the player nows what the new button is for
-    --self.nextIconGO.parent.transform:MoveLocal(Vector3(0,0,-10))
 end
+
+Daneel.Debug.RegisterScript(Behavior)

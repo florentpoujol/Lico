@@ -6,12 +6,12 @@ function Behavior:Awake()
     self.gameObject:AddTag("link")
 
     self.sourceColorGO = self.gameObject:GetChild("Source Color")
-    self.targetColorGO = self.gameObject:GetChild("Target Color")
-    self.targetColorGO:AddTag("link_renderer")
-    self.targetColorGO.OnClick = function()
+    self.sourceColorGO:AddTag("link_renderer")
+    self.sourceColorGO.OnClick = function()
         self:OnClick()
     end
-
+    self.targetColorGO = self.gameObject:GetChild("Target Color")
+    
     self.nodeGOs = {} -- filled in [Node/Link]
     --self.nodePositions = {} -- filled in [Node/Link], used in [Node/CanLink]
 end
@@ -19,10 +19,15 @@ end
 
 function Behavior:SetColor( color, endColor )
     self.sourceColorGO.modelRenderer.color = color
-    self.targetColorGO.modelRenderer.color = endColor    
+    
+    if color == endColor then
+        self.targetColorGO.modelRenderer.opacity = 0
+    else
+        self.targetColorGO.modelRenderer.color = endColor
+    end
 end
 
--- Called when the player clicks on the node's hitbox
+-- Called when the player clicks on the target color's renderer
 function Behavior:OnClick()   
     if Game.endLevel == true then 
         return

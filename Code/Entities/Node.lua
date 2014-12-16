@@ -1,6 +1,6 @@
 --[[PublicProperties
 colorName string ""
-maxLinkCount number 6
+maxLinkCount number 4
 /PublicProperties]]
 --[[
 goal : check if a node can connect to another
@@ -17,7 +17,12 @@ CanLink function must also check if there isn't a link in between
 ]]
 
 
-function Behavior:Awake()
+function Behavior:Awake(s)
+    if s ~= true then
+        self:Awake(true)
+        return
+    end
+    
     -- if the game object only has a modelRenderer, it is a placeholder to be replaced by the real node
     local rendererGO = self.gameObject:GetChild("Renderer")
     if rendererGO == nil then
@@ -28,18 +33,18 @@ function Behavior:Awake()
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
         
-        realNode.s.maxLinkCount = self.maxLinkCount
+        realNode.s:SetMaxLinkCount( self.maxLinkCount )
         if self.colorName == "" and self.gameObject.modelRenderer ~= nil then
-            self.colorName = self.gameObject.modelRenderer.model.name
+            local model = self.gameObject.modelRenderer.model
+            if model ~= nil then
+                self.colorName = self.gameObject.modelRenderer.model.name
+            end
         end
         realNode.s:Init(self.colorName)
              
         self.gameObject:Destroy()
         return
     end
-    
-
-    ----------
 
     self.gameObject.s = self
     self.gameObject:AddTag("node")
@@ -59,6 +64,10 @@ function Behavior:Awake()
     self.isInit = false
 end
 
+function Behavior:SetMaxLinkCount( count )
+    count = count or 4
+    self.maxLinkCount = math.clamp( count, 1, 4 )
+end
 
 -- In practice, only called from a node placeholder Awake()
 function Behavior:Init( colorName )
@@ -66,9 +75,11 @@ function Behavior:Init( colorName )
         return
     end
     
+    local rendererGO = self.gameObject:GetChild("Renderer")
+    
     if colorName == "" or colorName == nil then
-        if self.gameObject.modelRenderer ~= nil and self.gameObject.modelRenderer.model ~= nil then
-           colorName = self.gameObject.modelRenderer.model.name
+        if rendererGO.modelRenderer ~= nil and rendererGO.modelRenderer.model ~= nil then
+           colorName = rendererGO.modelRenderer.model.name
         else
             error( "Node/Init(), no color name "..tostring(self.gameObject))   
         end
@@ -84,12 +95,9 @@ function Behavior:Init( colorName )
     rendererGO.modelRenderer.color = self.color
     
     rendererGO:AddTag("node_renderer")
-    rendererGO.OnClick = function() self:OnClick() end
-    rendererGO.OnMouseOver = function()
-        if not self.isSelected and not Game.levelEnded then
-            self:OnClick()
-        end
-    end
+    --rendererGO.OnClick = function() self:OnMouseEnter() end
+    --rendererGO.OnMouseOver = function() self:OnMouseOver() end
+    rendererGO.OnMouseEnter = function() self:OnMouseEnter() end
     
     self.rendererGO = rendererGO
     
@@ -102,7 +110,9 @@ function Behavior:Init( colorName )
         self.numberGO = numberGO
         numberGO.textRenderer.text = NumbersByColorName[ colorName ]
     else
-        numberGO:Destroy()
+        --if Game.levelToLoad == nil or Game.levelToLoad.isRandom ~= true then
+            numberGO.textRenderer.opacity = 0
+        --end
     end
     
     ----------
@@ -127,12 +137,9 @@ function Behavior:Init( colorName )
     -- pillar
     
     self.pillarGO = self.gameObject:GetChild("Pillar")
-    --Color.colorAssetsFolder = "Nodes/"
-    
+
     self.pillarGO.modelRenderer.color = self.color
     self.pillarGO.modelRenderer.opacity = 0.05
-    --self.pillarGO.transform:Move(Vector3(0,-5,0))
-    --self.pillarGO.transform.localScale = Vector3(1,10,1)
     
     self.isInit = true
 end
@@ -140,9 +147,8 @@ end
 
 --------------------------------------
 
-function Behavior:Start()
+function Behavior:Start()   
     if not self.gameObject.isDestroyed then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
-        
         if not self.isInit then
             self:Init()
         end
@@ -154,8 +160,7 @@ end
 
 
 function Behavior:GetLinkableNodes()
-    if #self.linkableNodes >= 4 then --TODO check if node is octogon
-        -- save a little performance by ending the function now if it doesn't need to run
+    if #self.linkableNodes >= 4 then -- 13/12/2014 : why would the function be called when the list is full ?
         return
     end
     
@@ -170,23 +175,6 @@ function Behavior:GetLinkableNodes()
     end
 
     
-    --[[
-    local oherDirections = {
-        Vector3(1,0,1),
-        Vector3(1,0,-1),
-        Vector3(-1,0,1),
-        Vector3(-1,0,-1),
-    }
-    
-    if node is turned 45° then
-        directions = oherDirections
-    end
-    
-    if node is octogon then
-        table.mergein( directions, otherDirections )
-    end
-    ]]
-    
     local ray = Ray( self.gameObject.transform.position, Vector3(0) )
     for i, direction in pairs(directions) do
         ray.direction = direction
@@ -197,66 +185,41 @@ function Behavior:GetLinkableNodes()
         
         if raycastHit ~= nil then
             local otherNode = raycastHit.gameObject.parent
-            
-            -- TODO : check orientation of other node's renderer
-            if not table.containsvalue( self.linkableNodes, otherNode ) then
-                table.insert( self.linkableNodes, otherNode ) -- raycatHit.gameObject is the rendererGO
-            end
-            if not table.containsvalue( otherNode.s.linkableNodes, self.gameObject ) then
-                table.insert( otherNode.s.linkableNodes, self.gameObject )
-            end
+            table.insertonce( self.linkableNodes, otherNode ) -- raycatHit.gameObject is the rendererGO
+            table.insertonce( otherNode.s.linkableNodes, self.gameObject )
         end
-        
     end
-
 end
 
 --------------------------------------
 
--- Called when left click or mouse over the node's renderer.
+-- Called when left click or mouse hover the node's renderer.
 -- See in Init() above.
-function Behavior:OnClick()
-    if self.isSelected and self.rendererGO.isMouseOver then -- click when mouse over and already selected
+function Behavior:OnMouseEnter()
+     if self.isSelected == true or Game.levelEnded == true then -- click when mouse over and already selected
         return
     end
-    
+     
     local selectedNode = GameObject.GetWithTag("selected_node")[1]
-    if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one
-        --print(selectedDot, self.gameObject)
-        --print((self.maxLinkCount <= 0 or (self.maxLinkCount > 0 and #self.nodeGOs < self.maxLinkCount) ))
-        --print( table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.colorName ], self.colorName ) )
-        --print(not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ))
-        
+    if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one        
         if 
-            (self.maxLinkCount <= 0 
-            or (self.maxLinkCount > 0 and #self.nodeGOs < self.maxLinkCount) ) -- prevent the node to be connected if it has no more connoction to make
-            and
-            
-            table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.colorName ], self.colorName ) -- colors of the nodes can connect
-            and
-            
+            #self.nodeGOs < self.maxLinkCount and  -- prevent the node to be connected if it has no more connoction to make
+            table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.colorName ], self.colorName ) and -- colors of the nodes can connect
             not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ) -- if they are not already connected
         then
-            
             -- check there isn't a bar in between
             if selectedNode.s:CanLink( self.gameObject ) then
                 selectedNode.s:Link( self.gameObject )
-            else
-                if not Game.randomLevelGenerationInProgress then
-                    --soundNoAction:Play()
-                end
-            end
-        else
-            if not Game.randomLevelGenerationInProgress then
-                --soundNoAction:Play()
             end
         end
     end
-    
-    self:Select()
+   
+    self:Select(true)
 end
 
 
+-- Called from OnMouseEnter() to selected this node
+-- or from the newly selected node (to unselect this one).
 function Behavior:Select( select )
     if select == nil then
         select = not self.isSelected
@@ -266,18 +229,13 @@ function Behavior:Select( select )
         return
     end
     
-    local animationTime = 0.1
-    
-    if select then
+    if select == true then
         -- prevent the node to be selected if it has no more link to make
-        if self.maxLinkCount > 0 and #self.nodeGOs >= self.maxLinkCount then
+        if #self.nodeGOs >= self.maxLinkCount then
             return
         end
         
-        --self.pillarGO.modelRenderer.opacity = 0.5
         self.pillarGO:Animate("opacity", 0.5, 0.5)
-        --print("0.5", self.pillarGO.modelRenderer.opacity, self.pillarGO.frontColorRenderer.opacity)
-
         self.isSelected = true
         
         local selectedNode = GameObject.GetWithTag("selected_node")[1]
@@ -286,27 +244,22 @@ function Behavior:Select( select )
         end
         self.gameObject:AddTag("selected_node")
     else
-        
-        --self.pillarGO.modelRenderer.opacity = 0.05
-        --print("0.05", self.pillarGO.modelRenderer.opacity, self.pillarGO.frontColorRenderer.opacity)
+
         self.pillarGO:Animate("opacity", 0.05, 0.5)
-        
         self.isSelected = false
         self.gameObject:RemoveTag("selected_node")
     end
 end
 
 
+-- Called from OnMouseEnter()
 -- Check there isn't a link or other node in between
 function Behavior:CanLink( targetGO )   
     if table.containsvalue( self.linkableNodes, targetGO ) then
-        -- both node can link apriori
+        -- both node can link a priori
         -- now check that there isn't a link in between        
-        local nodeRndrGOs = GameObject.GetWithTag("link_hitbox") 
-        table.removevalue( nodeRndrGOs, self.rendererGO )
-        table.removevalue( nodeRndrGOs, targetGO.s.rendererGO )
-        
-        if #nodeRndrGOs == 0 then
+        local linkRndrGOs = GameObject.GetWithTag("link_hitbox") 
+        if #linkRndrGOs == 0 then
             return true
         end
         
@@ -315,7 +268,7 @@ function Behavior:CanLink( targetGO )
         local direction = targetPosition - selfPosition
         
         local ray = Ray:New(selfPosition, direction:Normalized() )
-        local hit = ray:Cast( nodeRndrGOs, true )[1]
+        local hit = ray:Cast( linkRndrGOs, true )[1]
         
         if hit == nil or hit.distance > direction:GetLength() then -- note: direction:GetLength() always = 2
             return true
@@ -325,6 +278,7 @@ function Behavior:CanLink( targetGO )
 end
 
 
+-- Called from OnMouseEnter()
 function Behavior:Link( targetGO )
     local linkGO = Scene.Append("Entities/Link")   
     linkGO.parent = self.linksParentGO
@@ -346,6 +300,7 @@ function Behavior:Link( targetGO )
     linkGO.transform.localEulerAngles = angles
     
     --
+
     linkGO.s:SetColor( self.color, targetGO.s.color )
     
     linkGO.s.nodeGOs = { self.gameObject, targetGO }
@@ -373,20 +328,27 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
         -- loop on the existing marks in rfrom biggest num to 1
         if i <= nodeLinkCount then
             -- hide the link
-            --go:Display(0)
-            --f go.modelRenderer.opacity ~= 0 then
+            
+            
             if not go.isHidden then
-                go:Animate("opacity", 0.5, 0.5, function(tweener) 
-                    tweener.target.opacity = 0 
-                end)
+                --go:Display(0)
+                
+                --go:Animate("opacity", 0.5, 0.5, function(tweener) 
+                    --tweener.target.opacity = 0 
+                --end)
+                go.displayAnimOriginalScale = go.displayAnimOriginalScale or go.transform.localScale
+                if go.scaleAnim ~= nil then
+                    go.scaleAnim:Destroy()
+                end
+                go.scaleAnim = go:Animate("localScale", Vector3(0, go.displayAnimOriginalScale.y, 0), 0.5)
                 go.isHidden = true
             end
         else
-            --if go.modelRenderer.opacity == 0 then
             if go.isHidden == true then
-                --go:Display(01)
-                go.modelRenderer.opacity = 0.5
-                go:Animate("opacity", 0.01, 0.5)
+                if go.scaleAnim ~= nil then
+                    go.scaleAnim:Destroy()
+                end
+                go.scaleAnim = go:Animate("localScale", go.displayAnimOriginalScale, 0.5)
                 go.isHidden = false
             end
         end
@@ -482,10 +444,4 @@ function Behavior:Update()
     end
 end
 
-
-table.mergein( Daneel.Debug.functionArgumentsInfo, {
-    ["GetLinkableNodes"] = { script = Behavior },
-    ["CanLink"] = { script = Behavior },
-} )
-
-Daneel.Debug.RegisterScript( Behavior )
+Daneel.Debug.RegisterScript(Behavior)

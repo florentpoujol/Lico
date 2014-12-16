@@ -1,5 +1,9 @@
 
-function Behavior:Start()
+function Behavior:Start(s)
+    if s ~= true then
+        self:Start(true)
+        return
+    end
     
     -- grid size
     local onValidate = function(input)
@@ -7,10 +11,13 @@ function Behavior:Start()
     end
     
     local onFocus = function(input)
-        if input.focus then
-            input.backgroundGO:Display(0.7)
+        if input.isFocused then
+            --input.backgroundGO:Display(0.5)
+            input.backgroundGO.modelRenderer.model = "Cubes/Focused Input Background"
+            self.focusedInputId = table.getkey( self.inputs, input )
         else
-            input.backgroundGO:Display(1)           
+            --input.backgroundGO:Display(1)
+            input.backgroundGO.modelRenderer.model = "Cubes/Black"
             input:OnValidate()
         end
     end
@@ -21,7 +28,7 @@ function Behavior:Start()
     xInput.OnFocus = onFocus
     xInput.OnValidate = onValidate
     
-    xInput.defaultValue = Generator.gridSize.x
+    xInput.defaultValue = tostring(Generator.gridSize.x)
     xInput.gameObject.textRenderer.text = xInput.defaultValue
     
     local yInput = GameObject.Get("Generator Form.Grid Size.Y.Input").input
@@ -29,7 +36,7 @@ function Behavior:Start()
     yInput.OnFocus = onFocus
     yInput.OnValidate = onValidate
     
-    yInput.defaultValue = Generator.gridSize.y
+    yInput.defaultValue = tostring(Generator.gridSize.y)
     yInput.gameObject.textRenderer.text = yInput.defaultValue
     
     
@@ -39,16 +46,49 @@ function Behavior:Start()
     local input = GameObject.Get("Seed Input").input
     input.OnFocus = onFocus
     input.OnValidate = function(input)
-       Generator.userSeed = tonumber( input.gameObject.textRenderer.text  )
+        local text = input.gameObject.textRenderer.text
+        if text == input.defaultValue then
+            text = ""
+        end
+        Generator.userSeed = text
     end
+    if Generator.userSeed ~= "" then
+        input.gameObject.textRenderer.text = Generator.userSeed
+    end
+    
     
     --
     local genButton = GameObject.Get("Generate Button")
     
-    genButton:AddEventListener("OnLeftClickReleased", function(go)       
+    genButton:AddEventListener("OnLeftClickReleased", function(go)
+        Generator.fromGeneratorForm = true
         Game.levelToLoad = Generator.randomLevel
         Scene.Load("Main/Master Level")
     end )
     
     --InitIcon(genButton)
+    
+    
+    self.inputs = {
+        xInput, yInput, input
+    }
+    self.focusedInputId = 0
 end
+
+function Behavior:Update()
+    if CS.Input.WasButtonJustPressed("Tab") then
+        if self.inputs[ self.focusedInputId ] ~= nil then
+            self.inputs[ self.focusedInputId ]:Focus(false)
+            --print(self.inputs[ self.focusedInputId ], self.focusedInputId)
+            self.focusedInputId = self.focusedInputId + 1
+            if self.focusedInputId > 3 then
+                self.focusedInputId = 1
+            end
+            
+            self.inputs[ self.focusedInputId ]:Focus(true)
+        end
+    end
+end
+
+Daneel.Debug.RegisterScript(Behavior)
+

@@ -32,6 +32,7 @@ function Behavior:Awake()
     
     ----------
     -- ColorBlind mode
+    
     local infoIconGO = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
     infoIconGO:InitWindow("Color Blind Mode.Info Window", "mouseclick")
     -- do not put that code in Start because InitWindow would be called after InitIcons() (in [Main Menu]) and overwrite onLeftClickReleased()
@@ -41,7 +42,6 @@ end
 function Behavior:Start()
     -- ColorBlind mode
     local checkboxGO = GameObject.Get("Color Blind Mode.Checkbox")
-    checkboxGO:AddTag("ui")
     checkboxGO.toggle.OnUpdate = function(toggle)
         Options.colorBlindModeActive = toggle.isChecked
         SaveOptions()
