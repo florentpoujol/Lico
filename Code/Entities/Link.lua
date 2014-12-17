@@ -47,6 +47,5 @@ function Behavior:OnClick()
     node2.s:UpdateLinkQueue()
     
     --soundLinkBroken:Play()
-    --Game.deletedLinkCount = Game.deletedLinkCount + 1
     self.gameObject:Destroy()
 end

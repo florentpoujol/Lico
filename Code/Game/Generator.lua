@@ -204,10 +204,6 @@ function Generator.Generate()
     -- 10x10 > i=201
     -- 50x50 > i=5001
     
-    -----------------------------------------------------------
-    -- generate color + maxLinkCount
-    
-    
     
     -----------------------------------------------------------
     -- generate grid
@@ -258,8 +254,8 @@ function Generator.Generate()
         end
     end
     
-    local actualHalfGridSize = Vector2( gridSize.x+1, gridSize.y+1 ) / 2 -- note: not the actual half grid size, but make the level centered and fitted to the screen
-    nodesOriginGO.transform.localPosition = Vector3( actualHalfGridSize.x, 0, -actualHalfGridSize.y )
+    -- center the level
+    nodesOriginGO.transform.localPosition = Vector3( gridSize.x-1, 0, -(gridSize.y-1) )
 end
 
 

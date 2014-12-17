@@ -31,21 +31,25 @@ AllowedConnectionsByColor = {
 
 ColorList = { "Red", "Yellow", "Green", "Cyan", "Blue", "Magenta" }
 
+-- Set of color instance
 ColorsByName = nil -- set by SetRandomColors()
+
+-- Numbers used when the color blind mode is active, used instaed of the color to recognize the nodes
 NumbersByColorName = nil -- set by SetRandomColors()
 
+-- Generate a new set of random colors
 -- Called once below and also from [Master Level/Awake]
 function SetRandomColors()
     ColorsByName = {}
     NumbersByColorName = {}
     local numberOffset = 0
     
-    for i, name in ipairs( ColorList ) do
+    for i=1, #ColorList do
+        local name = ColorList[i]
         NumbersByColorName[ name ] = math.random(1,16) + numberOffset
         numberOffset = numberOffset + 16
-    
-        --
-        local color = Color( Color.colorsByName[ name:lower() ] )
+        
+        local color = Color.New( Color.colorsByName[ name:lower() ] )
         
         -- now color is one of the primary or secondary color, with one or two components at 0
         -- make them non-zero, at random
@@ -81,7 +85,7 @@ function SetRandomColors()
         end
         
         ColorsByName[ name ] = color
-    end -- end for
+    end -- end for ColorList
 end
 SetRandomColors() 
 
@@ -91,10 +95,8 @@ SetRandomColors()
 function Daneel.UserConfig()
     return {
         debug = {
-            enableDebug = true,
-            enableStackTrace = true,
+            enableDebug = false,
+            enableStackTrace = false,
         }
     }
 end
-
-Color.colorAssetsFolder = "Flat Nodes/" -- also set/reset several times in [Node/Init]

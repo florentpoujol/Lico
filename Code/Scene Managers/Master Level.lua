@@ -4,32 +4,30 @@ function Behavior:Awake( s )
         self:Awake(true)
         return
     end
-
-    local bg = Scene.Append("Main/Background")
     
-    ---------
-        
     SetRandomColors() -- set new random colors
     
+    Scene.Append("Main/Background")
+
     local uiMaskGO = GameObject.Get("UI Mask")
     uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
     uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
-    Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- now, the mask hides the whole level, wait 0.5sec to fade it out
+    Tween.Timer(1, function() uiMaskGO.s:Animate(0,0.5) end) -- now, the mask hides the whole level, wait 0.5sec to fade it out
     
     ----------
     -- Spawn level content
     
-    Game.nodesByName = {} -- filled in [Node/Awake], used in [Master Level/ShowHint]
+    Game.nodesByName = {} -- used in Nodes, leave it there
     
-    local level = Game.levelToLoad or Levels[1]
+    local level = Game.levelToLoad or Levels[1] -- Game.levelToLoad is set to one entry of the Levels table in a level cartridge OnLeftClickReleased event listener
     self.levelNameGO = GameObject.Get("Level Name")
-    self.levelNameGO.textRenderer.text = level.name
     
     self.levelRoot = Scene.Append( level.scenePath )
     if not level.isRandom then
+        self.levelNameGO.textRenderer.text = level.name
         self:ReparentNodes()
     end
-    -- when level is random, reparenting will be done when the node have been generated in Generator.initFunction()
+    -- when level is random, reparenting will be done when the node have been generated in Generator.randomLevel.initFunction()
 
     ----------
     -- Help/tutorial window
@@ -48,16 +46,12 @@ function Behavior:Awake( s )
             iconPH:Destroy()
         end
         
-        local windowGO = helpGO:GetChild("Window")
-        if windowGO ~= nil then
-            helpWindowGO = windowGO
-            windowGO.parent = GameObject.Get("Help Window Parent")
-            windowGO.transform.localPosition = Vector3(0)
+        helpWindowGO = helpGO:GetChild("Window")
+        if helpWindowGO ~= nil then
+            GameObject.Get("Help Window Parent"):Append(helpWindowGO)
             
-            local contentGO = windowGO.child
-            if contentGO.hud == nil then
-                contentGO:AddComponent("Hud")
-            end
+            -- add a hud component on the help window's content game object
+            
         end
     end
 
@@ -65,120 +59,77 @@ function Behavior:Awake( s )
     -- Icons
     
     local menuIconGO = GameObject.Get("Icons.Main Menu.Renderer")
-    menuIconGO.OnLeftClickReleased = function(go)
+    menuIconGO:AddEventListener( "OnLeftClickReleased", function(go)
         uiMaskGO.s:Animate(1,0.5, function()
             Scene.Load("Main/Main Menu")
         end )
-    end
+    end )
     
     --
     local helpIconGO = GameObject.Get("Icons.Help.Renderer")
     
     if helpWindowGO ~= nil then
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
-        helpWindowGO.child.hud.position = Vector2(0,40) 
+        local contentGO = helpWindowGO.child 
+        if contentGO.hud == nil then
+            GUI.Hud.New(contentGO)
+        end
+        contentGO.hud.position = Vector2(0,40) 
     else
         helpIconGO.parent:RemoveTag("icon")
         helpIconGO.parent:AddTag("inactive_icon")
     end
     
-    
-    --
-    --[[
-    local hintIconGO = GameObject.Get("Icons.Hint.Renderer")
-    hintIconGO.parent:Destroy()
-    hintIconGO = nil
-    
-    self.remainingHintCount = level.hintCount or 0
-    if self.remainingHintCount > 0 then
-        self.levelPaths = level.paths
-    
-        local oOnLeftClickReleased = hintIconGO.OnLeftClickReleased
-        hintIconGO.OnLeftClickReleased = function(go)
-            oOnLeftClickReleased(go)
-            self:ShowHint()
-        end
-        
-        if helpIconGO == nil then
-            hintIconGO.parent.transform:MoveLocal(Vector3(-5,0,0))
-        end
-    else
-        hintIconGO.parent:Destroy()
-        hintIconGO = nil
-    end
-    ]]
     --
     local nextIconGO = GameObject.Get("Icons.Next Level.Renderer")
-    self.nextIconGO = nextIconGO
+    self.nextIconGO = nextIconGO -- used in EndLevel()
     
     if Game.levelToLoad.isRandom == true then
-        nextIconGO.textRenderer.text = "0" -- refresh
+        nextIconGO.textRenderer.text = "0" -- "refresh" icon
         
-        local tooltipTextGO = nextIconGO.parent:GetChild("Tooltip.Content.Text")
+        local tooltipTextGO = nextIconGO.parent:GetChild("Text", true) -- Icons.Next Level.Tooltip.Content.Text
         tooltipTextGO.textRenderer.text = "Generate new level"
     end
     
-    nextIconGO.OnLeftClickReleased = function(go)
+    nextIconGO:AddEventListener( "OnLeftClickReleased", function(go)
         uiMaskGO.s:Animate(1,0.5, function()
-            print("Scene.current", Scene.current)
             Scene.Load( Scene.current )
         end )
-    end
+    end )
     
-    InitIcons() -- here to be called after InitWindow()
+    InitIcons()
     
+    --
     if helpWindowGO ~= nil then
+        -- makes the "Help" tooltip appear a few secnds after the beginning of the level, 
+        -- so that players notice the icon and the help they can get
         local tooltip = helpIconGO.parent:GetChild("Tooltip")
-        Tween.Timer(1.5, function()
+        Tween.Timer(2, function()
             tooltip:Display()
         end)
         
-        local coords = GameObject.Get("UI Camera").camera:WorldToScreenPoint( helpIconGO.transform.position )
-        -- Note: Camera.Project() returns a bad Vector
-        local beforePos = helpWindowGO.child.hud.position
-        coords = Vector2(0,40)
-        helpWindowGO.child.hud.position = Vector2(coords)
-        helpWindowGO.child.hud.savedPosition = Vector2(coords)
-                
-        local oOnDisplay = helpWindowGO.OnDisplay
-        helpWindowGO.OnDisplay = function(go)
-            if oOnDisplay ~= nil then
-                oOnDisplay(go)
-            end
-
-            local contentGO = go.child
-            if go.isDisplayed then
-                --print(go.child.hud.position, go.child.hud.savedPosition)
-            else
-                
-            end
-        end
+        -- reposition the help window at 
+        --helpWindowGO.child.hud.position = Vector2(0,40)
     end
-    
+     
     ----------
-    -- End level
+    -- End of level
     
     Game.levelEnded = false
     Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Node/CheckVictory]
     self.levelStartTime = os.clock()
-    Game.deletedLinkCount = 0 -- updated in [Link/OnClick], used in EndLevel() below
+  
+    ----------
+    self.worldGO = GameObject.Get("World") -- also used in Update()
+    --self.worldGO:GetChild("Placeholder"):Destroy()
+    self.worldGOEndLevelRotation = Vector3(0,0.1,0)
     
-    self.endLevelGO = GameObject.Get("End Level")
-    self.endLevelGO.transform.localPosition = Vector3(0,-40,0)
+    UpdateUISize()
     
-    --
     if not level.isRandom then
         self:UpdateLevelCamera() 
     end
-    -- when random level, is from Generator.initFunction()
-    
-    self.worldGO = GameObject.Get("World") -- also used in Update()
-    self.worldGO.modelRenderer:Destroy()
-    
-    --
-    UpdateUISize()
-    
-    self.frameCount = 0
+    -- when random level, is done from Generator.randomLevel.initFunction()
 end
 
 
@@ -202,70 +153,27 @@ end
 
 -- Updates the World camera's orthographic scale so that the whole level (not more, not less) just fit in the viewport
 -- Nodes must have been reparented with ReparentNodes() before.
--- Called from Awake() or Generator.initFunction()
+-- Called from Awake() or Generator.rendomLevel.initFunction()
 function Behavior:UpdateLevelCamera()
    local nodes = GameObject.GetWithTag("node")
     local maxValue = 0
     for i, node in pairs(nodes) do       
         local value = math.abs( node.transform.position.y )
-        print("y value", value)
+        print("y value", math.round( node.transform.position.y, 3))
         if value > maxValue then
             maxValue = value
         end
     end
-
+    
     local scale = math.ceil(maxValue + 1) * 2
     print(scale, maxValue)
-    GameObject.Get("World Camera").camera.orthographicScale = scale -- min=10
+    GameObject.Get("World Camera").camera.orthographicScale = math.max( 6, scale ) -- min=6
 end
-
-
--- Called the Hint icon OnLeftMouseReleased event
--- Game.nodesByHint table is set in Awake(), filled in [Node/Awake]
-function Behavior:ShowHint()   
-    if self.remainingHintCount > 0 then
-        local nodeNames = self.levelPaths[ math.random( #self.levelPaths ) ]
-        local i = 0
-        
-        while i < 1000 do
-            i = i + 1
-            local startId = math.random( #nodeNames - 1 ) -- don't select the last item
-            print( startId, nodeNames[ startId ] )
-            local startNode = Game.nodesByName[ nodeNames[ startId ] ]
-            local endNode = Game.nodesByName[ nodeNames[ startId + 1 ] ]
-            
-            if not table.containsvalue( startNode.s.nodeGOs, endNode ) then
-                startNode.s:Link( endNode )
-                break
-            end
-        end
-        
-        -- 08/10/2014 i can reach values of 20+ at the end of level 1.1 and 2.2
-        
-        -- TODO : don't rely on random tries
-        -- split the paths with more than 2 item in multiple 2 items paths in Level script before runtime
-        -- and remove the paths who have been discovered
-        
-        -- TODO : don't select and remove from possible paths links the player has already created
-        
-        -- TODO : hide Hint icon when no more hint available ?
-        
-        if i > 100 then
-            print("MasterLevel:ShowHint() has looped "..i.." times !")
-        end
-        
-        self.remainingHintCount = self.remainingHintCount - 1
-    end
-end
-
 
 
 function Behavior:Update()
-    self.frameCount = self.frameCount + 1
-    
-    if Game.levelEnded then
-        self.worldGO.transform:RotateLocalEulerAngles(Vector3(0,0.1,0))
-        
+    if Game.levelEnded == true then
+        self.worldGO.transform:RotateLocalEulerAngles(self.worldGOEndLevelRotation)
     else
         if CS.Input.WasButtonJustReleased( "Escape" ) then
             local sn = GameObject.GetWithTag("selected_node")[1]
@@ -277,12 +185,12 @@ function Behavior:Update()
 end
 
 
--- Called when EndLevel event is Fired from [Node/CheckVictory]
+-- Called when EndLevel event is fired from [Node/CheckVictory]
 function Behavior:EndLevel()
     Game.levelEnded = true
     
     -- next level
-    if Game.levelToLoad.name ~= "Random" then
+    if not Game.levelToLoad.isRandom then
         local currentLevel = GetLevel( Game.levelToLoad.name )
         if currentLevel ~= nil then -- is nil for random level
             currentLevel.isCompleted = true
@@ -302,10 +210,12 @@ function Behavior:EndLevel()
         end
     end
     
-    self.nextIconGO.parent:RemoveTag("inactive_icon")
-    local tooltip = self.nextIconGO.parent:GetChild("Tooltip")
-    InitIcons( self.nextIconGO.parent )
-    tooltip:Display()
+    local nextIconParent = self.nextIconGO.parent -- self.nextIconGO is the renderer, with the actual icon
+    nextIconParent:RemoveTag("inactive_icon")
+    InitIcons( nextIconParent )
+    
+    --local tooltip = nextIconParent:GetChild("Tooltip")
+    self.nextIconGO:FireEvent("OnMouseEnter", self.nextIconGO)
 end
 
 Daneel.Debug.RegisterScript(Behavior)

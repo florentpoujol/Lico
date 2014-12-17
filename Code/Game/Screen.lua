@@ -9,22 +9,21 @@ Daneel.modules.Screen = Screen
 function Screen.Load()
     local OriginalHudNew = GUI.Hud.New
     
-    -- override GUI.Hud.New so that hud component update their position whevever the screen is resized
+    -- Overload GUI.Hud.New() so that hud component update their position whevever the screen is resized
     function GUI.Hud.New( gameObject, params )
         params = params or {}
         local savedPosition = params.position
         local hud = OriginalHudNew( gameObject, params )
         hud.savedPosition = savedPosition
         
-        -- after the new originGO has been created
+        -- After the new originGO has been created
         hud.OnScreenResized = function()
             if hud.savedPosition ~= nil then
-                hud.position = hud.savedPosition
-                --print("OnScreenResized", hud.gameObject, hud.savedPosition, hud.position, hud.gameObject.transform.localPosition, hud.gameObject.transform.position)
+                hud:SetPosition( hud.savedPosition )
             end
         end
         Daneel.Event.Listen( "OnScreenResized", hud )
-        -- SaveHudPosition and OnScreenResized are fired from Update() below
+        -- "OnScreenResized" event is fired from Update() below
         
         return hud
     end

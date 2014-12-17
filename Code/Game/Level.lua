@@ -1,6 +1,5 @@
 
 Levels = {
-
     {
         name = "1.1",
         scenePath = "Levels/1.1",
@@ -62,12 +61,6 @@ for i, level in ipairs( Levels ) do
     end
 end
 
---table.rprint( Levels )
-
---table.mergein( Levels, table.copy(Levels))
---table.mergein( Levels, table.copy(Levels))
---table.mergein( Levels, table.copy(Levels))
---table.mergein( Levels, table.copy(Levels))
 
 -- Called from [Levels/Awake]
 function LoadCompletedLevels()
@@ -88,6 +81,7 @@ function LoadCompletedLevels()
     end )
 end
 
+
 -- Called from [Master Level/EndLevel]
 function SaveCompletedLevels()
     local ids = {}
@@ -105,16 +99,12 @@ function SaveCompletedLevels()
 end
 
 
-
-
 function GetLevel( nameOrId )
     local field = "name"
     if type( nameOrId ) == "number" then
         field = "id"
     end
-    --print(field, nameOrId)
     for i, level in pairs( Levels ) do
-        --print(level[ field ] == nameOrId
         if level[ field ] == nameOrId then
             return level
         end

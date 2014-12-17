@@ -26,16 +26,13 @@ function Behavior:Awake()
         
     self:BuildLevelGrid()
     
-    
     ------------
     -- spawn random generator form
-    
     GameObject.Get("Generator Form Origin"):Append("Menus/Generator Form")
 end
 
 
 function Behavior:BuildLevelGrid()
-    
     if self.firstLevelIndex < 1 then
         self.firstLevelIndex = 1
     end
@@ -43,24 +40,22 @@ function Behavior:BuildLevelGrid()
     self.lastFirstLevelIndex = self.firstLevelIndex
     
     ---------
-    
+    -- destroy the existing grid
     for i, go in pairs( self.gridGO.children ) do
         go:Destroy()
     end
     
     ----------
-    -- build the level grid
+    -- build the new grid
     local x = 0
     local y = 0
     
-    for index, level in ipairs( Levels ) do
-        if index >= self.firstLevelIndex then
-        
-            local cartridgeGO = Scene.Append("Entities/Level Cartridge")
-            cartridgeGO.parent = self.gridGO
+    for i=1, #Levels do
+        if i >= self.firstLevelIndex then
+            local cartridgeGO = self.gridGO:Append("Entities/Level Cartridge")
             cartridgeGO.transform.localPosition = Vector3( self.cartridgeWidth * x, -self.cartridgeHeight * y, 0 )
             
-            cartridgeGO.s:SetData( level )
+            cartridgeGO.s:SetData( Levels[i] )
             
             x = x + 1
             if x >= self.gridLayout.x then

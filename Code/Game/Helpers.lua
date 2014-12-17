@@ -86,6 +86,7 @@ end
 
 -- Allow for mouse over effect other than the tooltip
 -- Used in [Main Menu/Awake] and [Master Level/Awake]
+-- Ideally call after InitWindow()
 function InitIcons( iconGOs )
     if iconGOs ~= nil then
         if getmetatable( iconGOs ) == GameObject then
@@ -147,9 +148,9 @@ function InitIcons( iconGOs )
                 go.isScaleDown = true
             end
             
-            rendererGO.OnClick = function(go)
+            rendererGO:AddEventListener( "OnClick", function(go)
                 go:scaleDown()
-            end
+            end )
             
             rendererGO:AddEventListener( "OnLeftClickReleased", function(go)
                 if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then re-enter the icon
@@ -193,7 +194,7 @@ function InitIcons( iconGOs )
                 --rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
             end -- if tooltipGO ~= nil
         end -- if not iconGO.isInit
-    end -- for i, iconGO in pairs( iconGOs )
+    end -- for iconGOs
     
     --
     local iconGOs = GameObject.GetWithTag("inactive_icon")
@@ -282,13 +283,10 @@ end
 
 ---------------------------
 
-
----------------------------
-
 -- Used in [Main Menu].
 -- Parent the provided child to the game object and set the child at a position of 0,0,0
 -- The child can be the path of a scene.
-function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath )
+function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath, localPosition )
     local child = gameObjectNameOrInstanceOrScenePath
     if type( child ) == "string" then
         child = GameObject.Get( gameObjectNameOrInstanceOrScenePath )
@@ -296,12 +294,13 @@ function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath )
             child = Scene.Append( gameObjectNameOrInstanceOrScenePath )
         end
         if child == nil then
-            print("warning: GameObject.Append() child is nil", gameObject, gameObjectNameOrInstanceOrScenePath )
+            print("GameObject.Append(): WARNING: child is nil", gameObject, gameObjectNameOrInstanceOrScenePath )
         end
     end
     
     child.parent = gameObject
-    child.transform:SetLocalPosition( Vector3:New(0,0,0) )
+    localPosition = localPosition or Vector3.New(0,0,0)
+    child.transform:SetLocalPosition( localPosition )
     return child
 end
 

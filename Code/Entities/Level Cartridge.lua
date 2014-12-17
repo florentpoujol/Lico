@@ -1,12 +1,13 @@
 function Behavior:Awake()
     self.gameObject.s = self
-    
     self.completedGO = self.gameObject:GetChild("Completed")
     
     local bgGO = self.gameObject:GetChild("Background")
     bgGO.modelRenderer.model = "Nodes/"..ColorList[ math.random( #ColorList ) ]
 end
 
+-- Called from [Levels/BuildLevelGrid]
+-- level argument is on entry of the Levels table
 function Behavior:SetData( level )
     local children = self.gameObject.children
     local levelNameGO = children[1]
@@ -23,14 +24,11 @@ function Behavior:SetData( level )
     end
     
     bg.OnLeftClickReleased = function(go)
-        local transitionAnimation = function()
-            local uiMaskGO = GameObject.Get("UI Mask")
-            uiMaskGO.s:Animate( 1, 0.5, function()
-                Game.levelToLoad = level
-                Scene.Load("Main/Master Level")
-            end )
-        end
-        transitionAnimation()
+        local uiMaskGO = GameObject.Get("UI Mask")
+        uiMaskGO.s:Animate( 1, 0.5, function()
+            Game.levelToLoad = level
+            Scene.Load("Main/Master Level")
+        end )
     end
     
     if not level.isCompleted then

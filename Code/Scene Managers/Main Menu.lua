@@ -1,18 +1,24 @@
 
-function Behavior:Awake()
-    Scene.Append("Main/Background")  
+function Behavior:Awake(s)
+    if s ~= true then
+        self:Awake(true)
+        return
+    end
     
-    ----------
+    Scene.Append("Main/Background")  
+
     local uiMaskGO = GameObject.Get("UI Mask")
     uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
-    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything (and sets the ui mask's model)
-    Tween.Timer(0.5, function() uiMaskGO.s:Animate(0,0.5) end) -- fade the mask out
+    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
+    Tween.Timer(1, function() uiMaskGO.s:Animate(0,0.5) end)
     
     ----------
     -- Icons / Windows
-        
+    
     local windowAnimation = function( windowGO )
         if not windowGO.isDisplayed then
+            -- fade the UI mask in then change the window game object 
+            -- then fade the ui mask back out
             uiMaskGO.s:Animate( 1, 0.5, function()
                 windowGO:Display()
                 uiMaskGO.s:Animate(0, 0.5)
@@ -20,14 +26,10 @@ function Behavior:Awake()
         end
     end
     
-    -- credit window   
-    --local creditsGO = GameObject.Get("Icons.Credits.Renderer")
-    --creditsGO:InitWindow("Windows.Credits", "mouseclick", nil, windowAnimation, "main_menu_window")
-
     -- options
     local optionsWindowGO = GameObject.Get("Windows.Options")
     optionsWindowGO:Append("Menus/Options")
-  
+    
     local buttonGO = GameObject.Get("Icons.Options.Renderer")
     buttonGO:InitWindow(optionsWindowGO, "mouseclick", nil, windowAnimation, "main_menu_window")
     
@@ -36,13 +38,14 @@ function Behavior:Awake()
     windowGO:Append("Menus/Levels")
     
     local buttonGO = GameObject.Get("Icons.Levels.Renderer")
+    self.levelsButtonGO = buttonGO -- used in Start()
     buttonGO:InitWindow(windowGO, "mouseclick", nil, windowAnimation, "main_menu_window")
     
     --
-    local allWindows =  GameObject.Get("UI.Windows").children
-    
-    for i, windowGO in pairs( allWindows ) do
-        windowGO:AddEventListener( "OnDisplay", function( go )           
+    local allWindows = GameObject.Get("UI.Windows").children
+    for i=1, #allWindows do
+        allWindows[i]:AddEventListener( "OnDisplay", function( go )
+            -- highlight/hide the window's button when the window is displayed/hidden          
             if go.isDisplayed then
                 go.buttonGO:Display(1)
             else
@@ -50,8 +53,8 @@ function Behavior:Awake()
             end
         end )
     end
-   
-    InitIcons()
+    
+    InitIcons() -- setup everythings so that the icons react to the mouse and show the desired window
 
     --
     Daneel.Event.Listen("OnScreenResized", SaveOptions, true ) -- save the new resolution/ui size, whenever the resolution/ui size are modified 
@@ -60,8 +63,8 @@ function Behavior:Awake()
     end )
 end
 
-
 function Behavior:Start()
-    local levelsButton = GameObject.Get("Icons.Levels.Renderer")
-    levelsButton:FireEvent("OnLeftClickReleased", levelsButton) -- Select levels window
+    self.levelsButtonGO:FireEvent("OnLeftClickReleased", self.levelsButtonGO) -- Select levels window
 end
+
+Daneel.Debug.RegisterScript(Behavior)

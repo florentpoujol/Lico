@@ -7,12 +7,11 @@ function Behavior:Awake()
     Daneel.Event.Listen( "OnScreenResized", function() self:ResizeBackground() end )
     
     self.frontGO = self.gameObject:GetChild("Front")
-    self.frontGO:AddTag("front_background")
+    self.frontGO:AddTag("front_background") -- used by the UI Mask to get the game object
     self.backGO = self.gameObject:GetChild("Back")
     
     -- randomize the starting color
-    
-    local backColorId = math.random( 1, #ColorList )
+    local backColorId = math.random( #ColorList )
     local frontColorId = backColorId - 1
     if frontColorId == 0 then
         frontColorId = #ColorList
@@ -40,11 +39,8 @@ function Behavior:Awake()
     } )
 end
 
+-- Called once from Awake then when the "OnScreenResized" event is fired
 function Behavior:ResizeBackground()
-    local orthoScale = GameObject.Get("UI Camera").camera.orthographicScale
-    local screenSize = CS.Screen.GetSize()
-    local aspectRatio = screenSize.x / screenSize.y
-    
-    local scale = Vector3( orthoScale * math.ceil( aspectRatio ), orthoScale + 1, 1 )
-    self.gameObject.transform.localScale = scale
+    local orthoScale = GameObject.Get("UI Camera").camera.orthographicScale + 1
+    self.gameObject.transform.localScale = Vector3( orthoScale * CS.Screen.aspectRatio, orthoScale, 1 )
 end
