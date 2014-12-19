@@ -95,8 +95,8 @@ SetRandomColors()
 function Daneel.UserConfig()
     return {
         debug = {
-            enableDebug = false,
-            enableStackTrace = false,
+            enableDebug = true,
+            enableStackTrace = true,
         }
     }
 end

@@ -120,9 +120,28 @@ function Behavior:Awake( s )
     self.levelStartTime = os.clock()
   
     ----------
+    
     self.worldGO = GameObject.Get("World") -- also used in Update()
     --self.worldGO:GetChild("Placeholder"):Destroy()
     self.worldGOEndLevelRotation = Vector3(0,0.1,0)
+    
+    
+    local randomGeneratorMask = GameObject.Get("Random Generator Mask")
+    
+    if Game.levelToLoad.isRandom == true then
+        randomGeneratorMask:GetChild("Model").transform.localScale = Vector3(500,500,0.1)
+        self.generatorIcon = randomGeneratorMask:GetChild("Icon")
+        
+        Daneel.Event.Listen("RandomLevelGenerated", function()
+            self.generatorIcon = nil
+            randomGeneratorMask:Destroy()
+        end)
+    else
+        randomGeneratorMask:Destroy()
+    end
+    
+    
+    
     
     UpdateUISize()
     
@@ -159,17 +178,20 @@ function Behavior:UpdateLevelCamera()
     local maxValue = 0
     for i, node in pairs(nodes) do       
         local value = math.abs( node.transform.position.y )
-        print("y value", math.round( node.transform.position.y, 3))
         if value > maxValue then
             maxValue = value
         end
     end
     
     local scale = math.ceil(maxValue + 1) * 2
-    print(scale, maxValue)
+
     GameObject.Get("World Camera").camera.orthographicScale = math.max( 6, scale ) -- min=6
 end
 
+local maxCooldown = 5 -- frames
+local coroutineCooldown = maxCooldown
+-- this makes the coroutine only resume every X frames 
+-- to prevent a noticeable lag with the background colors
 
 function Behavior:Update()
     if Game.levelEnded == true then
@@ -181,6 +203,23 @@ function Behavior:Update()
                 sn.s:Select(false)
             end
         end      
+    end
+    
+    if Generator.coroutine ~= nil then
+        coroutineCooldown = coroutineCooldown - 1
+        if coroutine.status(Generator.coroutine) ~= "dead" then
+            if coroutineCooldown <= 0 then
+                coroutineCooldown = maxCooldown
+                coroutine.resume(Generator.coroutine)
+                --print( coroutine.resume(Generator.coroutine) )
+            end
+        else
+            Generator.coroutine = nil
+        end
+    end
+    
+    if self.generatorIcon ~= nil then
+        self.generatorIcon.transform:RotateLocalEulerAngles( Vector3(0,0,-0.6) )
     end
 end
 

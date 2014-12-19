@@ -14,6 +14,10 @@ function Behavior:Awake()
     
     self.nodeGOs = {} -- filled in [Node/Link]
     --self.nodePositions = {} -- filled in [Node/Link], used in [Node/CanLink]
+    
+    Daneel.Event.Listen("EndLevel", function()
+        self.sourceColorGO:RemoveTag() -- prevent links to be removed
+    end )
 end
 
 

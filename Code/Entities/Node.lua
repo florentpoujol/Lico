@@ -95,8 +95,6 @@ function Behavior:Init( colorName )
     rendererGO.modelRenderer.color = self.color
     
     rendererGO:AddTag("node_renderer")
-    --rendererGO.OnClick = function() self:OnMouseEnter() end
-    --rendererGO.OnMouseOver = function() self:OnMouseOver() end
     rendererGO.OnMouseEnter = function() self:OnMouseEnter() end
     
     self.rendererGO = rendererGO
@@ -202,7 +200,7 @@ function Behavior:OnMouseEnter()
      
     local selectedNode = GameObject.GetWithTag("selected_node")[1]
     if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one        
-        if 
+        if
             #self.nodeGOs < self.maxLinkCount and  -- prevent the node to be connected if it has no more connoction to make
             table.containsvalue( AllowedConnectionsByColor[ selectedNode.s.colorName ], self.colorName ) and -- colors of the nodes can connect
             not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ) -- if they are not already connected
@@ -406,16 +404,14 @@ end
 -- Called on all nodes when EndLevel event is fired from one node's CheckVictory()
 function Behavior:EndLevel()
     -- prevent nodes to be selected
-    self.rendererGO:RemoveTag("node_renderer")
-    
-    -- prevent links to be removed
-    --for i, link in pairs( self.linkGOs ) do
-        --link.s.hitboxGO:RemoveTag("link_hitbox")
-    --end
+    self.rendererGO:RemoveTag()
+    self:Select(false)
+    self.gameObject:RemoveTag()
     
     self:UpdateLinkQueue(99) -- do as if the node had 4 links, hidding all the link marks
 
-    self.pillarGO.transform.localScale = 0 -- using the opacity is not enough as the last node get somehow automatically reselected
+    --self.pillarGO.transform.localScale = 0 -- using the opacity is not enough as the last node get somehow automatically reselected
+    self.pillarGO:Destroy()
     
     -- hide the numbers
     if self.numberGO ~= nil then
@@ -423,25 +419,5 @@ function Behavior:EndLevel()
     end
 end
 
-
-local linkMarksFadeOutFrames = 60 -- 1 sec
-
-function Behavior:Update()
-    -- unselect selected node when click outside a node
-    if CS.Input.WasButtonJustPressed("LeftMouse") then
-        local selectedNode = GameObject.GetWithTag("selected_node")[1]
-        if selectedNode ~= nil then
-            local nodes = GameObject.GetWithTag("node_renderer")
-            for i, node in pairs(nodes) do
-                if node.isMouseOver then
-                    return
-                end
-            end
-        
-            -- the mouse is not over any node, just deselected
-            selectedNode.s:Select(false)
-        end
-    end
-end
 
 Daneel.Debug.RegisterScript(Behavior)

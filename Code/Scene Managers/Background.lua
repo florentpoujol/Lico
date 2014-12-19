@@ -1,4 +1,6 @@
 
+local nextColorId = math.random( #ColorList )
+
 function Behavior:Awake()
     self.gameObject.parent = GameObject.Get("Game Background")
     self.gameObject.transform.localPosition = Vector3(0,0,-50)
@@ -11,29 +13,27 @@ function Behavior:Awake()
     self.backGO = self.gameObject:GetChild("Back")
     
     -- randomize the starting color
-    local backColorId = math.random( #ColorList )
+    local backColorId = nextColorId - 1
+    if backColorId < 1 then
+        backColorId = #ColorList
+    end
     local frontColorId = backColorId - 1
-    if frontColorId == 0 then
+    if frontColorId < 1 then
         frontColorId = #ColorList
     end
     
     self.frontGO.modelRenderer.model = "Nodes/"..ColorList[frontColorId]
     self.backGO.modelRenderer.model = "Nodes/"..ColorList[backColorId]
     
-    self.nextColorId = backColorId + 1
-    if self.nextColorId > #ColorList then
-        self.nextColorId = 1
-    end
-    
     self.frontGO:Animate("opacity", 0, 6, {
         loops = -1,
         OnLoopComplete = function(t)
             self.frontGO.modelRenderer.model = self.backGO.modelRenderer.model
-            self.backGO.modelRenderer.model = "Nodes/"..ColorList[self.nextColorId]
+            self.backGO.modelRenderer.model = "Nodes/"..ColorList[nextColorId]
 
-            self.nextColorId = self.nextColorId + 1
-            if self.nextColorId > #ColorList then
-                self.nextColorId = 1
+            nextColorId = nextColorId + 1
+            if nextColorId > #ColorList then
+                nextColorId = 1
             end
         end,
     } )

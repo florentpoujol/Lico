@@ -3,6 +3,7 @@ Generator = {
     seed = nil, -- set in [Generator.GenerateSeed], user in [Generator.Generate]
     userSeed = "", -- set in [Generator Form/Start]
     gridSize = Vector2(4),
+    difficulty = "med", -- "easy", "hard"
     fromGeneratorForm = false, -- tell whether the Generator is init from the 
     
     -- object set to Game.levelToLoad when the Generate button in the generator form is clicked (see in [Generator Form/Start])
@@ -22,10 +23,12 @@ Generator = {
             
             masterLevelScript.levelNameGO.textRenderer.text = Generator.seed
             
-            Generator.Generate()
+            Daneel.Event.Listen("RandomLevelGenerated", function()
+                masterLevelScript:ReparentNodes()
+                masterLevelScript:UpdateLevelCamera()
+            end) -- fired at the end of Generate()
             
-            masterLevelScript:ReparentNodes()
-            masterLevelScript:UpdateLevelCamera()
+            Generator.Generate()
         end
     },
 }
@@ -36,7 +39,9 @@ Generator = {
 function Generator.Generate()     
     math.randomseed( Generator.randomseed ) 
     --print("set randomseed", Generator.randomseed )
-    math.random(); math.random(); math.random()
+    math.random(); math.random(); math.random();
+    
+    SetRandomColors() -- re set them here so that the random colors are always the same or a given seed
     
     -- Generate ordered list of nodes
     local nodes = { 
@@ -136,13 +141,56 @@ function Generator.Generate()
     6 Assign the value A to N.
     7 Go to step 2.
     ]]
+    
+    
 
    
     local queue = {}
     local node = nodes[ math.random(#nodes) ]
     local nextNode = nil
     local addToQueue = true
-    local colorId = math.random(6)
+    
+    -- ColorList = { "Red", "Yellow", "Green", "Cyan", "Blue", "Magenta" }
+    -- On difficulty easy or normal, there is only 4 and 5 colors respectively
+    -- build a colorList so that the colors that folow each other are linkable
+    -- it's only when #colorList<6, that the first and last color are not linkable
+    local colorList = {}
+    local idToRemove = math.random(6)
+    
+    local difficulty = Generator.difficulty
+    local colorToSkip = 0
+    if difficulty == "easy" then
+        colorToSkip = 2
+    elseif difficulty == "med" then
+        colorToSkip = 1
+    end
+    
+    local index = nil
+    for i=1, #ColorList do
+        if i == idToRemove and colorToSkip > 0 then
+            idToRemove = idToRemove + 1
+            colorToSkip = colorToSkip - 1
+            index = 1
+        else
+            if index == nil then
+                table.insert( colorList, ColorList[i] )
+            else
+                table.insert( colorList, index, ColorList[i] )
+                index = index + 1
+            end
+        end
+    end
+    
+    if idToRemove == 6 and difficulty == "easy" then
+        table.remove( colorList, 1 ) -- removes the red
+    end
+    
+    if math.random(2) == 1 then
+        colorList = table.reverse( colorList )
+    end
+    -- now colorList contains 4 to 6 colors.
+   
+    local colorId = math.random( #colorList )
     
     local i = 1
     while i<9999 do
@@ -153,23 +201,33 @@ function Generator.Generate()
             node.isVisited = true
             
             local previousNode = node.previousNode
-            if previousNode ~= nil then
+            if previousNode ~= nil and previousNode.colorName ~= nil then
                 -- make sure that the color can link
-                local prevColorName = previousNode.colorName
-                if prevColorName ~= nil then
-                    colorId = table.getkey( ColorList, prevColorName ) + 1
-                    if colorId > 6 then
-                        colorId = 1
-                    end
+                colorId = table.getkey( colorList, previousNode.colorName ) or 1
+            end
+            
+            local idMod = { -1, -1, 0, 0, 1, 1, 1, 1 }
+            --local idMod = {1 }
+            colorId = colorId + idMod[ math.random( #idMod ) ]
+            
+            if colorId < 1 then
+                if #colorList == 6 then
+                    colorId = #colorList
+                else
+                    -- remember that when #colorList<6 the first and last color are not linkable
+                    colorList = table.reverse( colorList )
+                    colorId = math.random( 2 ) -- 1 is the same color as last time
+                end
+            elseif colorId > #colorList then
+                if #colorList == 6 then
+                    colorId = 1
+                else
+                    colorList = table.reverse( colorList )
+                    colorId = math.random( 2 )
                 end
             end
             
-            node.colorName = ColorList[colorId]
-            --print(node.colorName, colorId)
-            colorId = colorId + 1
-            if colorId > 6 then
-                colorId = 1
-            end
+            node.colorName = colorList[colorId]
         end
 
         local neighbours = table.copy( node.neighbours )
@@ -207,56 +265,82 @@ function Generator.Generate()
     
     -----------------------------------------------------------
     -- generate grid
-
+    
     local nodesParentGO = GameObject.Get("Level Root.Nodes")
     local nodesOriginGO = GameObject.Get("Level Root.Nodes.Origin")
     local debugMaze = true
     
-    for i=1, #nodes do
-        local node = nodes[i]
-        local offset = node.position -- offset from top right corner of the grid      
-        offset = offset - Vector2(1) -- now, offset is on base 0 (top right node is 0,0, node on the opposite side is {gridSize.x-1,gridSize.y-1})
-        offset = offset * 2 -- nodes are actually two units appart (nodes are 1 unit squares, with 1 unit between each of them)
-                       
-        local nodeGO = Scene.Append("Entities/Node", nodesOriginGO)
-        local linkedNeighbours = nodes[i].linkedNeighbours
-        local linkCount = 4 -- this is to confuse
-        if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
-            linkCount = #linkedNeighbours*2
-        end
-        nodeGO.s:SetMaxLinkCount( linkCount )
-        --table.print(node)
-        nodeGO.s:Init( node.colorName )
+    local useCoroutine = true
         
-        local position = Vector3( -offset.x, 0, offset.y ) -- keep the variable, used in debug maze
-        nodeGO.transform.localPosition = position
-        
-        if debugMaze == true then
+    local generate_grid = function()
+        for i=1, #nodes do
+            local node = nodes[i]
+            local offset = node.position -- offset from top right corner of the grid      
+            offset = offset - Vector2(1) -- now, offset is on base 0 (top right node is 0,0, node on the opposite side is {gridSize.x-1,gridSize.y-1})
+            offset = offset * 2 -- nodes are actually two units appart (nodes are 1 unit squares, with 1 unit between each of them)
+            
+            local nodeGO = Scene.Append("Entities/Node", nodesOriginGO)
             local linkedNeighbours = nodes[i].linkedNeighbours
+            local linkCount = 4 -- this is to confuse
             if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
-                for j=1, #linkedNeighbours do
-                    offset = linkedNeighbours[j].position
-                    offset = ( offset - Vector2(1) ) * 2
-                    local targetPosition = Vector3( -offset.x, 0, offset.y )
-                    
-                    local go = GameObject.New("", {
-                        parent = nodeGO,
-                        transform = {
-                            localPosition = Vector3(0,0.1,0),
-                            localScale = Vector3(0.5,1,targetPosition:Distance(position))
-                        },
-                        modelRenderer = { model = "Cubes/Arrow", opacity = 0.8 }
-                    } )
-    
-                    go.transform:LookAt( nodesOriginGO.transform:LocalToWorld( targetPosition ) )
+                linkCount = #linkedNeighbours*2
+            end
+            nodeGO.s:SetMaxLinkCount( linkCount )
+            nodeGO.s:Init( node.colorName )
+            
+            local position = Vector3( -offset.x, 0, offset.y ) -- keep the variable, used in debug maze
+            nodeGO.transform.localPosition = position
+            
+            if debugMaze == true then
+                local linkedNeighbours = nodes[i].linkedNeighbours
+                if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
+                    for j=1, #linkedNeighbours do
+                        offset = linkedNeighbours[j].position
+                        offset = ( offset - Vector2(1) ) * 2
+                        local targetPosition = Vector3( -offset.x, 0, offset.y )
+                        
+                        local go = GameObject.New("", {
+                            parent = nodeGO,
+                            transform = {
+                                localPosition = Vector3(0,0.1,0),
+                                localScale = Vector3(0.5,1,targetPosition:Distance(position))
+                            },
+                            modelRenderer = { model = "Cubes/Arrow", opacity = 0.8 }
+                        } )
+        
+                        go.transform:LookAt( nodesOriginGO.transform:LocalToWorld( targetPosition ) )
+                        local angles = go.transform.localEulerAngles
+                        angles.z = 0
+                        go.transform.localEulerAngles = angles
+                    end
                 end
             end
+            
+            if useCoroutine == true then
+                coroutine.yield()
+            end
         end
+        
+        -- center the level
+        nodesOriginGO.transform.localPosition = Vector3( gridSize.x-1, 0, -(gridSize.y-1) )
+        
+        if useCoroutine == true then
+            coroutine.yield()
+        end
+            
+        Daneel.Event.Fire("RandomLevelGenerated")
     end
     
-    -- center the level
-    nodesOriginGO.transform.localPosition = Vector3( gridSize.x-1, 0, -(gridSize.y-1) )
+    if useCoroutine == true then
+        Generator.coroutine = coroutine.create( generate_grid )
+        -- is resumed from [Master Level/Update]
+    else
+        Generator.coroutine = nil
+        generate_grid()
+    end
 end
+
+
 
 
 -- Generate the random seed which will be used to generate the level

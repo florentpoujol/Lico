@@ -1,10 +1,5 @@
 
-function Behavior:Start(s)
-    if s ~= true then
-        self:Start(true)
-        return
-    end
-    
+function Behavior:Start()
     -- grid size
     local onValidate = function(input)
         Generator.gridSize[ input.component ] = tonumber( input.gameObject.textRenderer.text )
@@ -38,6 +33,30 @@ function Behavior:Start(s)
     
     yInput.defaultValue = tostring(Generator.gridSize.y)
     yInput.gameObject.textRenderer.text = yInput.defaultValue
+    
+    ----------
+    -- Difficulty
+    
+    local difficultyGOs = self.gameObject:GetChild("Difficulty").children
+    table.remove(difficultyGOs, 1)
+    local difficulties = {"easy", "med", "hard"}
+    
+    for i=1, #difficultyGOs do
+        local go = difficultyGOs[i]
+        go.backgroundGO = go.child
+        go.backgroundGO:AddComponent("Toggle", {
+            group = "random_difficulty",
+            checkedModel = "Cubes/Focused Input Background",
+            uncheckedModel = "Cubes/Black",
+            difficulty = difficulties[i],
+            OnUpdate = function(t)
+                if t.isChecked == true then
+                    Generator.difficulty = t.difficulty
+                end
+            end
+        })
+    end
+    difficultyGOs[2].backgroundGO.toggle:Check(true)
     
     
     ----------
