@@ -1,27 +1,31 @@
 
 Generator = {
-    seed = nil, -- set in [Generator.GenerateSeed], user in [Generator.Generate]
-    userSeed = "", -- set in [Generator Form/Start]
+    levelName = "", -- set in SetSeed(), used in Generator.level.initFunction()
+    randomseed = 0, -- set in SetSeed(), used in Generate()
+    userSeed = tostring( os.time() ), -- reset based on user input from [Generator Form/Start] or ProcessUserSeed()
+    
+    -- level properties    
     gridSize = Vector2(4),
-    difficulty = "med", -- "easy", "hard"
-    fromGeneratorForm = false, -- tell whether the Generator is init from the 
+    difficulty = 2, -- 1="easy", 3="hard"
+    fromGeneratorForm = false, -- tell whether the Generator is init from the form (or from the level, via the "generate new level" button)
     
     -- object set to Game.levelToLoad when the Generate button in the generator form is clicked (see in [Generator Form/Start])
-    randomLevel = {
-        name = "seed", -- there for debug and because [Master Level/Awake] use the value before the seed is actually generated
+    level = {
+        name = "level.seed", -- there for debug and because [Master Level/Awake] use the value before the seed is actually generated
         scenePath = "Levels/Random",
         isRandom = true,
         
         -- called from [Mater Level/Start] with the scripted behavior as first argument
         initFunction = function( masterLevelScript )
-            if Generator.userSeed ~= "" and Generator.fromGeneratorForm == true then
-                Generator.SetPropertiesFromSeed()
+            if Generator.fromGeneratorForm == true then
+                Generator.ProcessUserSeed()
             else
-                Generator.GenerateSeed()
+                Generator.SetSeed()
+                -- set level name, user seed, random seed
             end
             Generator.fromGeneratorForm = false
             
-            masterLevelScript.levelNameGO.textRenderer.text = Generator.seed
+            masterLevelScript.levelNameGO.textRenderer.text = Generator.levelName
             
             Daneel.Event.Listen("RandomLevelGenerated", function()
                 masterLevelScript:ReparentNodes()
@@ -142,9 +146,6 @@ function Generator.Generate()
     7 Go to step 2.
     ]]
     
-    
-
-   
     local queue = {}
     local node = nodes[ math.random(#nodes) ]
     local nextNode = nil
@@ -156,12 +157,12 @@ function Generator.Generate()
     -- it's only when #colorList<6, that the first and last color are not linkable
     local colorList = {}
     local idToRemove = math.random(6)
-    
     local difficulty = Generator.difficulty
+
     local colorToSkip = 0
-    if difficulty == "easy" then
+    if difficulty == 1 then
         colorToSkip = 2
-    elseif difficulty == "med" then
+    elseif difficulty == 2 then
         colorToSkip = 1
     end
     
@@ -181,7 +182,7 @@ function Generator.Generate()
         end
     end
     
-    if idToRemove == 6 and difficulty == "easy" then
+    if idToRemove == 6 and difficulty == 1 then
         table.remove( colorList, 1 ) -- removes the red
     end
     
@@ -191,6 +192,16 @@ function Generator.Generate()
     -- now colorList contains 4 to 6 colors.
    
     local colorId = math.random( #colorList )
+    local colorIdModulation = { -1, 0, 1, 1 }
+    if difficulty ~= 1 then
+        table.insert( colorIdModulation, 1 )
+        table.insert( colorIdModulation, 1 )
+    end
+    if difficulty == 3 then
+        -- add two more
+        table.insert( colorIdModulation, 1 )
+        table.insert( colorIdModulation, 1 )
+    end
     
     local i = 1
     while i<9999 do
@@ -206,13 +217,14 @@ function Generator.Generate()
                 colorId = table.getkey( colorList, previousNode.colorName ) or 1
             end
             
-            local idMod = { -1, -1, 0, 0, 1, 1, 1, 1 }
-            --local idMod = {1 }
-            colorId = colorId + idMod[ math.random( #idMod ) ]
+            
+            colorId = colorId + colorIdModulation[ math.random( #colorIdModulation ) ]
             
             if colorId < 1 then
                 if #colorList == 6 then
                     colorId = #colorList
+                    math.random( 2 ) -- this is here so that math.random() is called the same number of time whatever the difficulty is
+                    -- and thus create the same maze
                 else
                     -- remember that when #colorList<6 the first and last color are not linkable
                     colorList = table.reverse( colorList )
@@ -221,6 +233,7 @@ function Generator.Generate()
             elseif colorId > #colorList then
                 if #colorList == 6 then
                     colorId = 1
+                    math.random( 2 ) -- leave that here !
                 else
                     colorList = table.reverse( colorList )
                     colorId = math.random( 2 )
@@ -264,15 +277,15 @@ function Generator.Generate()
     
     
     -----------------------------------------------------------
-    -- generate grid
+    -- build grid
     
     local nodesParentGO = GameObject.Get("Level Root.Nodes")
     local nodesOriginGO = GameObject.Get("Level Root.Nodes.Origin")
-    local debugMaze = true
+    Generator.nodesCount = #nodes
     
     local useCoroutine = true
         
-    local generate_grid = function()
+    local buildGrid = function()
         for i=1, #nodes do
             local node = nodes[i]
             local offset = node.position -- offset from top right corner of the grid      
@@ -291,7 +304,8 @@ function Generator.Generate()
             local position = Vector3( -offset.x, 0, offset.y ) -- keep the variable, used in debug maze
             nodeGO.transform.localPosition = position
             
-            if debugMaze == true then
+            if Daneel.Config.debug.enableDebug == true then
+                -- double press F3 to reveal/hide arrows (code in [Master Level/Update])
                 local linkedNeighbours = nodes[i].linkedNeighbours
                 if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
                     for j=1, #linkedNeighbours do
@@ -305,7 +319,8 @@ function Generator.Generate()
                                 localPosition = Vector3(0,0.1,0),
                                 localScale = Vector3(0.5,1,targetPosition:Distance(position))
                             },
-                            modelRenderer = { model = "Cubes/Arrow", opacity = 0.8 }
+                            modelRenderer = { model = "Cubes/Arrow", opacity = 0 },
+                            tags = {"debug_maze"}
                         } )
         
                         go.transform:LookAt( nodesOriginGO.transform:LocalToWorld( targetPosition ) )
@@ -316,7 +331,7 @@ function Generator.Generate()
                 end
             end
             
-            if useCoroutine == true then
+            if useCoroutine == true and i%2 == 0 then -- yield every 2 nodes
                 coroutine.yield()
             end
         end
@@ -324,69 +339,45 @@ function Generator.Generate()
         -- center the level
         nodesOriginGO.transform.localPosition = Vector3( gridSize.x-1, 0, -(gridSize.y-1) )
         
-        if useCoroutine == true then
-            coroutine.yield()
-        end
-            
         Daneel.Event.Fire("RandomLevelGenerated")
     end
     
     if useCoroutine == true then
-        Generator.coroutine = coroutine.create( generate_grid )
+        Generator.coroutine = coroutine.create( buildGrid )
         -- is resumed from [Master Level/Update]
     else
         Generator.coroutine = nil
-        generate_grid()
+        buildGrid()
     end
 end
 
 
-
-
--- Generate the random seed which will be used to generate the level
--- a seed is a floating point number build like this : [properties].[random seed]
-function Generator.GenerateSeed()
-    local seed = ""
+-- @param seed (string or number) [optional] The random seed to use (will be os.time() if arg isn't set)
+function Generator.SetSeed( seed )
+    seed = seed or os.time()
     
-    -- grid size
-    local x = tostring(Generator.gridSize.x)
-    if #x == 1 then
-        x = "0"..x
-    end
-    local y = tostring(Generator.gridSize.y)
-    if #y == 1 then
-        y = "0"..y
-    end
-    seed = seed..x..y
-    
-    --
-    Generator.seed = seed.."."..os.time() -- used for the name of the level   
-    Generator.randomseed = os.time()
+    Generator.levelName = Generator.gridSize.x..Generator.gridSize.y..Generator.difficulty.."."..seed 
+    Generator.randomseed = tonumber( seed )
+    Generator.userSeed = tostring( seed )
 end
 
 
--- Extract the gnerator's properties from the first part of the seed
-function Generator.SetPropertiesFromSeed( seed )
-    local originalSeed = seed
-    seed = seed or Generator.userSeed
-    
-    if seed ~= nil then
-        local sSeed = tostring(seed)
-        local props, time = unpack( sSeed:split(".") )
-
-        if props ~= nil and props ~= "" then
-            -- FIXME : check the value of each properties
-
-            Generator.gridSize = Vector2( tonumber(props:sub(1,2)), tonumber(props:sub(3,4)) )
-            
-            Generator.seed = seed
-            Generator.randomseed = tonumber(time)
-        else
-            print("Generator.BuildPropertiesFromSeed(): Bad properties:", props, seed)
-        end
-    else
-        print("Generator.BuildFromSeed(): Seed is nil")
+-- Extract the generator's properties from the first part of the seed
+function Generator.ProcessUserSeed()
+    local props, seed = unpack( Generator.userSeed:split(".") )
+    if seed == nil then
+        -- level properties are not included with the seed
+        seed = props
+        props = nil
     end
+    
+    if props ~= nil then
+        Generator.gridSize = Vector2( tonumber(props:sub(1,2)), tonumber(props:sub(3,4)) )
+        Generator.difficulty = tonumber( props:sub(5,5) )
+    end
+    -- if no parameters included in the seed, they are already set via the form
+    
+    Generator.SetSeed( seed )
 end
 
 Daneel.Debug.RegisterObject(Generator)

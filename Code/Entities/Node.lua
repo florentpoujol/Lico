@@ -2,19 +2,6 @@
 colorName string ""
 maxLinkCount number 4
 /PublicProperties]]
---[[
-goal : check if a node can connect to another
-- check color
-
-find nodes the node can link to using rays in the 4 (or 8 in case of octogon) directions
-results must be updated when the node is turned 45°
-in all case nodes can connect only if they the ray intersects and they have the same rotation (or are octogon)
-each node has a reference to the nodes it can link to
-once a node has 4 references, remove it from
-
-CanLink function must also check if there isn't a link in between
-
-]]
 
 
 function Behavior:Awake(s)
@@ -28,7 +15,7 @@ function Behavior:Awake(s)
     if rendererGO == nil then
         local realNode = Scene.Append("Entities/Node", self.gameObject.parent)
         realNode.transform.localPosition = self.gameObject.transform.localPosition
-        
+                
         local name = self.gameObject.name
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
@@ -51,8 +38,6 @@ function Behavior:Awake(s)
     
     Daneel.Event.Listen("EndLevel", self.gameObject) -- fired from CheckVictory(), cateched by EndLevel()
     
-    self.linksParentGO = self.gameObject:GetChild("Links Parent")
-
     self.isSelected = false  
 
     self.linkableNodes = {}
@@ -84,19 +69,16 @@ function Behavior:Init( colorName )
             error( "Node/Init(), no color name "..tostring(self.gameObject))   
         end
     end
-
+    
     self.gameObject:RemoveTag(colorName)
     self.gameObject:AddTag(colorName)
     self.colorName = colorName
     
     self.color = ColorsByName[ colorName ]
     
-    local rendererGO = self.gameObject:GetChild("Renderer")
     rendererGO.modelRenderer.color = self.color
-    
     rendererGO:AddTag("node_renderer")
     rendererGO.OnMouseEnter = function() self:OnMouseEnter() end
-    
     self.rendererGO = rendererGO
     
     ----------
@@ -109,7 +91,8 @@ function Behavior:Init( colorName )
         numberGO.textRenderer.text = NumbersByColorName[ colorName ]
     else
         --if Game.levelToLoad == nil or Game.levelToLoad.isRandom ~= true then
-            numberGO.textRenderer.opacity = 0
+            --numberGO.textRenderer.opacity = 0
+            numberGO:Destroy()
         --end
     end
     
@@ -121,10 +104,10 @@ function Behavior:Init( colorName )
     local marks = self.linksQueue.children
     self.linksQueue.marks = {}
         
-    for i, go in ipairs( marks ) do -- loop on children from 1 to 6
+    for i=1, #marks do -- loop on children from 1 to 6
+        local go = marks[i]
         if i <= self.maxLinkCount then
             table.insert( self.linksQueue.marks, go )
-            go.modelRenderer.color = self.color
         else
             go:Destroy()
         end
@@ -135,9 +118,8 @@ function Behavior:Init( colorName )
     -- pillar
     
     self.pillarGO = self.gameObject:GetChild("Pillar")
-
     self.pillarGO.modelRenderer.color = self.color
-    self.pillarGO.modelRenderer.opacity = 0.05
+    --self.pillarGO.modelRenderer.opacity = 0.05
     
     self.isInit = true
 end
@@ -161,15 +143,22 @@ function Behavior:GetLinkableNodes()
     if #self.linkableNodes >= 4 then -- 13/12/2014 : why would the function be called when the list is full ?
         return
     end
-    
+        
     local nodeRndrs = GameObject.GetWithTag("node_renderer")
     table.removevalue( nodeRndrs, self.rendererGO )   
     
     local nodePosition = self.gameObject.transform.position
     local directionGOs = self.gameObject:GetChild("Ray Directions").children
-    local directions = {}
+    local directions = {   }
+    -- Vector3(1,0,0),  Vector3(-1,0,0),  Vector3(0,0,1),  Vector3(0,0,-1)
+    -- -0.707, y=-0.406, z=0.579
+    -- -0.707, y=0.406, z=-0.579
+    -- 0.707, y=0.406, z=-0.579
+    -- 0.707, y=-0.406, z=0.579
+    
     for i, go in pairs(directionGOs) do
         table.insert( directions, go.transform.position - nodePosition )
+        --print(go.transform.position , nodePosition, go.transform.position - nodePosition)
     end
 
     
@@ -279,7 +268,7 @@ end
 -- Called from OnMouseEnter()
 function Behavior:Link( targetGO )
     local linkGO = Scene.Append("Entities/Link")   
-    linkGO.parent = self.linksParentGO
+    linkGO.parent = self.gameObject
     linkGO.transform.localPosition = Vector3(0)
     
     local selfPosition = self.gameObject.transform.position
@@ -418,6 +407,5 @@ function Behavior:EndLevel()
         self.numberGO.textRenderer.opacity = 0
     end
 end
-
 
 Daneel.Debug.RegisterScript(Behavior)

@@ -23,6 +23,8 @@ function Behavior:Awake( s )
     self.levelNameGO = GameObject.Get("Level Name")
     
     self.levelRoot = Scene.Append( level.scenePath )
+    --self.levelRoot.transform.position = Vector3(0)
+    
     if not level.isRandom then
         self.levelNameGO.textRenderer.text = level.name
         self:ReparentNodes()
@@ -118,30 +120,33 @@ function Behavior:Awake( s )
     Game.levelEnded = false
     Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Node/CheckVictory]
     self.levelStartTime = os.clock()
-  
+     
     ----------
-    
-    self.worldGO = GameObject.Get("World") -- also used in Update()
-    --self.worldGO:GetChild("Placeholder"):Destroy()
-    self.worldGOEndLevelRotation = Vector3(0,0.1,0)
-    
     
     local randomGeneratorMask = GameObject.Get("Random Generator Mask")
     
     if Game.levelToLoad.isRandom == true then
         randomGeneratorMask:GetChild("Model").transform.localScale = Vector3(500,500,0.1)
-        self.generatorIcon = randomGeneratorMask:GetChild("Icon")
         
         Daneel.Event.Listen("RandomLevelGenerated", function()
-            self.generatorIcon = nil
             randomGeneratorMask:Destroy()
         end)
+        
+        self.progressbarGO = GameObject.Get("Bars.Front")
+        self.progressbarGO:AddComponent("ProgressBar", {
+            minLength = 0,
+            maxLength = 28,
+            value = 0,
+        } )
     else
         randomGeneratorMask:Destroy()
     end
     
+    ----------
     
-    
+    self.worldGO = GameObject.Get("World") -- also used in Update()
+    --self.worldGO:GetChild("Placeholder"):Destroy()
+    self.worldGOEndLevelRotation = Vector3(0,0.1,0)
     
     UpdateUISize()
     
@@ -156,6 +161,10 @@ function Behavior:Start()
     local func = Game.levelToLoad.initFunction 
     if func ~= nil then
         func( self )
+    end
+    
+    if Game.levelToLoad.isRandom then
+        self.progressbarGO.progressBar.maxValue = Generator.nodesCount
     end
 end
 
@@ -188,10 +197,14 @@ function Behavior:UpdateLevelCamera()
     GameObject.Get("World Camera").camera.orthographicScale = math.max( 6, scale ) -- min=6
 end
 
-local maxCooldown = 5 -- frames
+
+local maxCooldown = 4 -- frames
 local coroutineCooldown = maxCooldown
 -- this makes the coroutine only resume every X frames 
 -- to prevent a noticeable lag with the background colors
+-- note: the lag still happens when there is a lot of nodes
+
+local mazeDebugCooldown = 0
 
 function Behavior:Update()
     if Game.levelEnded == true then
@@ -211,15 +224,37 @@ function Behavior:Update()
             if coroutineCooldown <= 0 then
                 coroutineCooldown = maxCooldown
                 coroutine.resume(Generator.coroutine)
-                --print( coroutine.resume(Generator.coroutine) )
+                self.progressbarGO.progressBar.value = #GameObject.GetWithTag("node")
             end
         else
             Generator.coroutine = nil
         end
+        
+        --[[if CS.Input.WasButtonJustPressed("F2") then
+            if coroutine.status(Generator.coroutine) ~= "dead" then
+                coroutine.resume(Generator.coroutine)
+                self.progressbarGO.progressBar:UpdateValue( #GameObject.GetWithTag("node") )
+                print(#GameObject.GetWithTag("node"))
+            else
+                Generator.coroutine = nil
+            end
+        end]]
     end
     
-    if self.generatorIcon ~= nil then
-        self.generatorIcon.transform:RotateLocalEulerAngles( Vector3(0,0,-0.6) )
+    
+    mazeDebugCooldown = mazeDebugCooldown - 1
+    if CS.Input.WasButtonJustPressed( "F3" ) then
+        if mazeDebugCooldown > 0 then
+            local arrows = GameObject.GetWithTag("debug_maze")
+            local opacity = 0
+            if #arrows > 0 and arrows[1].modelRenderer.opacity == 0 then
+                opacity = 1
+            end
+            for i=1, #arrows do
+                arrows[i].modelRenderer.opacity = opacity
+            end            
+        end
+        mazeDebugCooldown = 20
     end
 end
 

@@ -39,7 +39,7 @@ function Behavior:Start()
     
     local difficultyGOs = self.gameObject:GetChild("Difficulty").children
     table.remove(difficultyGOs, 1)
-    local difficulties = {"easy", "med", "hard"}
+    --local difficulties = {"easy", "med", "hard"}
     
     for i=1, #difficultyGOs do
         local go = difficultyGOs[i]
@@ -48,7 +48,7 @@ function Behavior:Start()
             group = "random_difficulty",
             checkedModel = "Cubes/Focused Input Background",
             uncheckedModel = "Cubes/Black",
-            difficulty = difficulties[i],
+            difficulty = i,
             OnUpdate = function(t)
                 if t.isChecked == true then
                     Generator.difficulty = t.difficulty
@@ -56,13 +56,15 @@ function Behavior:Start()
             end
         })
     end
-    difficultyGOs[2].backgroundGO.toggle:Check(true)
+    
+    difficultyGOs[ Generator.difficulty ].backgroundGO.toggle:Check(true)
     
     
     ----------
     -- user seed input
     
     local input = GameObject.Get("Seed Input").input
+    input.defaultValue = tostring( os.time()-1 ) -- -1 so that it's not the same as the first Generator.userSeed
     input.OnFocus = onFocus
     input.OnValidate = function(input)
         local text = input.gameObject.textRenderer.text
@@ -71,22 +73,37 @@ function Behavior:Start()
         end
         Generator.userSeed = text
     end
-    if Generator.userSeed ~= "" then
+    input.gameObject.textRenderer.text = Generator.userSeed
+        
+    local newButton = GameObject.Get("New Seed Button")
+    newButton:AddTag("ui")
+    newButton:AddEventListener("OnLeftClickReleased", function(go)
+        Generator.userSeed = tostring( os.time() )
         input.gameObject.textRenderer.text = Generator.userSeed
+    end )
+    
+    
+    ----------
+    -- generate button
+    
+    local genButton = GameObject.Get("Generate Button")
+    genButton:AddTag("ui")
+    genButton.OnLeftClickReleased = function(go)
+        Generator.fromGeneratorForm = true
+        Game.levelToLoad = Generator.level
+        Scene.Load("Main/Master Level")
+    end
+    
+    genButton.OnMouseEnter = function()
+        genButton.transform.localScale = Vector3(1.1)
+    end
+    genButton.OnMouseExit = function()
+        genButton.transform.localScale = Vector3(1)
     end
     
     
-    --
-    local genButton = GameObject.Get("Generate Button")
-    
-    genButton:AddEventListener("OnLeftClickReleased", function(go)
-        Generator.fromGeneratorForm = true
-        Game.levelToLoad = Generator.randomLevel
-        Scene.Load("Main/Master Level")
-    end )
-    
-    --InitIcon(genButton)
-    
+    ---------
+    -- switch between inputs via tabs
     
     self.inputs = {
         xInput, yInput, input
