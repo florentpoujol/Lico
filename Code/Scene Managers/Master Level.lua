@@ -198,7 +198,7 @@ function Behavior:UpdateLevelCamera()
 end
 
 
-local maxCooldown = 4 -- frames
+local maxCooldown = 2 -- frames
 local coroutineCooldown = maxCooldown
 -- this makes the coroutine only resume every X frames 
 -- to prevent a noticeable lag with the background colors

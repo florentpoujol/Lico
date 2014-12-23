@@ -15,11 +15,10 @@ function Behavior:Awake()
     self.nodeGOs = {} -- filled in [Node/Link]
     --self.nodePositions = {} -- filled in [Node/Link], used in [Node/CanLink]
     
-    Daneel.Event.Listen("EndLevel", function()
-        self.sourceColorGO:RemoveTag() -- prevent links to be removed
-    end )
+    Daneel.Event.Listen("EndLevel", self.gameObject) 
+    -- do not register a function as it will still be registered if the link is removed,
+    -- throwing a error on end level, trying to remove the tags on the dead source color GO
 end
-
 
 function Behavior:SetColor( color, endColor )
     self.sourceColorGO.modelRenderer.color = color
@@ -52,4 +51,9 @@ function Behavior:OnClick()
     
     --soundLinkBroken:Play()
     self.gameObject:Destroy()
+end
+
+-- Called when the level ends
+function Behavior:EndLevel()
+    self.sourceColorGO:RemoveTag() -- prevent links to be removed
 end

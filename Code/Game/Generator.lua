@@ -1,4 +1,9 @@
 
+-- buggy levels
+-- 442.1412113232   5 colors  v c b m r    link rouge à vert
+-- 442.1419187573
+
+
 Generator = {
     levelName = "", -- set in SetSeed(), used in Generator.level.initFunction()
     randomseed = 0, -- set in SetSeed(), used in Generate()
@@ -38,16 +43,16 @@ Generator = {
 }
 
 
--- Generate the level
--- Produce a table that describe the position and color of the nodes
 function Generator.Generate()     
     math.randomseed( Generator.randomseed ) 
     --print("set randomseed", Generator.randomseed )
     math.random(); math.random(); math.random();
     
-    SetRandomColors() -- re set them here so that the random colors are always the same or a given seed
+    SetRandomColors() -- re set them here so that the random colors are always the same for a given seed
     
+    ----------
     -- Generate ordered list of nodes
+    
     local nodes = { 
         { 
             position = Vector2(1),
@@ -56,6 +61,7 @@ function Generator.Generate()
     
             isVisited = false,
             neighbours = {}, -- list of nodes reference
+            linkedNeighbours = {},
         }
     }
     
@@ -95,7 +101,8 @@ function Generator.Generate()
                         isVisited = false,
                         neighbours = {
                             currentNode
-                        }
+                        },
+                        linkedNeighbours = {}
                     }
                     
                     table.insert( nodes, node )
@@ -192,7 +199,7 @@ function Generator.Generate()
     -- now colorList contains 4 to 6 colors.
    
     local colorId = math.random( #colorList )
-    local colorIdModulation = { -1, 0, 1, 1 }
+    local colorIdModulation = { -1, 0, 1, 1, 1 }
     if difficulty ~= 1 then
         table.insert( colorIdModulation, 1 )
         table.insert( colorIdModulation, 1 )
@@ -201,10 +208,11 @@ function Generator.Generate()
         -- add two more
         table.insert( colorIdModulation, 1 )
         table.insert( colorIdModulation, 1 )
+        table.insert( colorIdModulation, 1 )
     end
     
     local i = 1
-    while i<9999 do
+    while i<999 do
         i = i+1
         
         if addToQueue == true then
@@ -233,11 +241,13 @@ function Generator.Generate()
             elseif colorId > #colorList then
                 if #colorList == 6 then
                     colorId = 1
-                    math.random( 2 ) -- leave that here !
+                    math.random( 2 ) -- leave that here ! see above
                 else
                     colorList = table.reverse( colorList )
                     colorId = math.random( 2 )
                 end
+            else
+                math.random( 2 ) -- leave that here ! see above
             end
             
             node.colorName = colorList[colorId]
@@ -255,9 +265,7 @@ function Generator.Generate()
             nextNode = neighbours[ math.random( #neighbours ) ]
             addToQueue = true
             
-            node.linkedNeighbours = node.linkedNeighbours or {}
             table.insert( node.linkedNeighbours, nextNode )
-            
             nextNode.previousNode = node
         
         elseif #queue > 0 then
@@ -272,8 +280,51 @@ function Generator.Generate()
     
     -- print("end loop", i)    
     -- 4x4 > i=33
+    -- 9x9 > i=163
     -- 10x10 > i=201
-    -- 50x50 > i=5001
+    
+    
+    -----------------------------------------------------------
+    -- set 
+    
+    for i=1, #nodes do
+        local node = nodes[i]
+        local linkCount = 2
+        
+        local neighboursCount = #node.linkedNeighbours
+        if neighboursCount == 1 then
+            linkCount = 2
+        elseif neighboursCount == 2 then
+            linkCount = 2
+            for j=1, #nodes do
+                if nodes[j].previousNode == node then
+                    -- _node.previousNode always exist except for the very first node of the path, with never has more than one linkedNeighbours
+                    linkCount = 3
+                end
+            end
+        elseif neighboursCount == 3 then -- can this happen ?
+            print("3 neighbours", node)
+            linkCount = 4
+        end
+        
+        -- if node is on an edge
+        if 
+            node.position.x == 1 or node.position.x == Generator.gridSize.x or
+            node.position.y == 1 or node.position.y == Generator.gridSize.y
+        then
+            linkCount = math.min( linkCount, 3 )
+        end
+        
+        -- if node is in a corner
+        if 
+            (node.position.x == 1 or node.position.x == Generator.gridSize.x) and
+            (node.position.y == 1 or node.position.y == Generator.gridSize.y)
+        then
+            linkCount = math.min( linkCount, 2 )
+        end
+        
+        node.linkCount = linkCount
+    end
     
     
     -----------------------------------------------------------
@@ -293,19 +344,20 @@ function Generator.Generate()
             offset = offset * 2 -- nodes are actually two units appart (nodes are 1 unit squares, with 1 unit between each of them)
             
             local nodeGO = Scene.Append("Entities/Node", nodesOriginGO)
-            local linkedNeighbours = nodes[i].linkedNeighbours
-            local linkCount = 4 -- this is to confuse
-            if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
-                linkCount = #linkedNeighbours*2
-            end
-            nodeGO.s:SetMaxLinkCount( linkCount )
-            nodeGO.s:Init( node.colorName )
-            
             local position = Vector3( -offset.x, 0, offset.y ) -- keep the variable, used in debug maze
             nodeGO.transform.localPosition = position
             
+            
+            
+            
+            nodeGO.s:SetMaxLinkCount( node.linkCount )
+            nodeGO.s:Init( node.colorName )
+            
+            
+            -- debug arrows
             if Daneel.Config.debug.enableDebug == true then
                 -- double press F3 to reveal/hide arrows (code in [Master Level/Update])
+                
                 local linkedNeighbours = nodes[i].linkedNeighbours
                 if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
                     for j=1, #linkedNeighbours do

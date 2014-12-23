@@ -3,6 +3,7 @@ colorName string ""
 maxLinkCount number 4
 /PublicProperties]]
 
+local nodesByPositions = {}
 
 function Behavior:Awake(s)
     if s ~= true then
@@ -15,7 +16,11 @@ function Behavior:Awake(s)
     if rendererGO == nil then
         local realNode = Scene.Append("Entities/Node", self.gameObject.parent)
         realNode.transform.localPosition = self.gameObject.transform.localPosition
-                
+        
+        --realNode.s.originPosition = self.gameObject.transform.position 
+        --nodesByPositions[ self.gameObject.transform.position:ToString() ] = realNode
+
+        
         local name = self.gameObject.name
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
@@ -90,10 +95,7 @@ function Behavior:Init( colorName )
         self.numberGO = numberGO
         numberGO.textRenderer.text = NumbersByColorName[ colorName ]
     else
-        --if Game.levelToLoad == nil or Game.levelToLoad.isRandom ~= true then
-            --numberGO.textRenderer.opacity = 0
-            numberGO:Destroy()
-        --end
+        numberGO:Destroy()
     end
     
     ----------
@@ -114,13 +116,30 @@ function Behavior:Init( colorName )
     end
     self.linksQueue.marks = table.reverse( self.linksQueue.marks )
     
-    -----------
+    ----------
     -- pillar
     
     self.pillarGO = self.gameObject:GetChild("Pillar")
     self.pillarGO.modelRenderer.color = self.color
-    --self.pillarGO.modelRenderer.opacity = 0.05
     
+    ----------
+    -- get linkable nodes
+    
+    local offsets = { Vector3(-2, 0, 0), Vector3(2, 0, 0), Vector3(0, 0, -2), Vector3(0, 0, 2) }
+    local position = self.gameObject.transform.position 
+    
+    for i=1, 4 do
+        local positionToTest = (position + offsets[i]):ToString()
+        local otherNode = nodesByPositions[ positionToTest ]
+        if otherNode ~= nil then
+            table.insertonce( self.linkableNodes, otherNode )
+            table.insertonce( otherNode.s.linkableNodes, self.gameObject )
+        end
+    end
+    
+    nodesByPositions[ position:ToString() ] = self.gameObject
+    
+    --
     self.isInit = true
 end
 
@@ -132,51 +151,9 @@ function Behavior:Start()
         if not self.isInit then
             self:Init()
         end
-        
-        -- by now all nodes of the level have been Init
-        self:GetLinkableNodes()
     end
 end
 
-
-function Behavior:GetLinkableNodes()
-    if #self.linkableNodes >= 4 then -- 13/12/2014 : why would the function be called when the list is full ?
-        return
-    end
-        
-    local nodeRndrs = GameObject.GetWithTag("node_renderer")
-    table.removevalue( nodeRndrs, self.rendererGO )   
-    
-    local nodePosition = self.gameObject.transform.position
-    local directionGOs = self.gameObject:GetChild("Ray Directions").children
-    local directions = {   }
-    -- Vector3(1,0,0),  Vector3(-1,0,0),  Vector3(0,0,1),  Vector3(0,0,-1)
-    -- -0.707, y=-0.406, z=0.579
-    -- -0.707, y=0.406, z=-0.579
-    -- 0.707, y=0.406, z=-0.579
-    -- 0.707, y=-0.406, z=0.579
-    
-    for i, go in pairs(directionGOs) do
-        table.insert( directions, go.transform.position - nodePosition )
-        --print(go.transform.position , nodePosition, go.transform.position - nodePosition)
-    end
-
-    
-    local ray = Ray( self.gameObject.transform.position, Vector3(0) )
-    for i, direction in pairs(directions) do
-        ray.direction = direction
-        
-        local raycastHit = ray:Cast( nodeRndrs, true )[1] -- true = sort by distance
-        -- TODO for efficiency :
-        -- get only the nodes actually in the direction and compute the distance via their coordinate (closest = smallest relative coords)
-        
-        if raycastHit ~= nil then
-            local otherNode = raycastHit.gameObject.parent
-            table.insertonce( self.linkableNodes, otherNode ) -- raycatHit.gameObject is the rendererGO
-            table.insertonce( otherNode.s.linkableNodes, self.gameObject )
-        end
-    end
-end
 
 --------------------------------------
 
@@ -395,7 +372,6 @@ function Behavior:EndLevel()
     -- prevent nodes to be selected
     self.rendererGO:RemoveTag()
     self:Select(false)
-    self.gameObject:RemoveTag()
     
     self:UpdateLinkQueue(99) -- do as if the node had 4 links, hidding all the link marks
 
