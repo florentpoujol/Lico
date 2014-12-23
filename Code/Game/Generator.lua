@@ -1,7 +1,6 @@
 
 -- buggy levels
--- 442.1412113232   5 colors  v c b m r    link rouge à vert
--- 442.1419187573
+-- 442.1419354847   link rouge vers cyan  + 3 marks pour un node qui n'a que deux liens
 
 
 Generator = {
@@ -371,7 +370,7 @@ function Generator.Generate()
                                 localPosition = Vector3(0,0.1,0),
                                 localScale = Vector3(0.5,1,targetPosition:Distance(position))
                             },
-                            modelRenderer = { model = "Cubes/Arrow", opacity = 0 },
+                            modelRenderer = { model = "Debug/Arrow", opacity = 0 },
                             tags = {"debug_maze"}
                         } )
         

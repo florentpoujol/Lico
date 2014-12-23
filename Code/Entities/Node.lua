@@ -17,10 +17,6 @@ function Behavior:Awake(s)
         local realNode = Scene.Append("Entities/Node", self.gameObject.parent)
         realNode.transform.localPosition = self.gameObject.transform.localPosition
         
-        --realNode.s.originPosition = self.gameObject.transform.position 
-        --nodesByPositions[ self.gameObject.transform.position:ToString() ] = realNode
-
-        
         local name = self.gameObject.name
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
@@ -54,10 +50,21 @@ function Behavior:Awake(s)
     self.isInit = false
 end
 
+
+function Behavior:Start()   
+    if not self.gameObject.isDestroyed then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
+        if not self.isInit then
+            self:Init()
+        end
+    end
+end
+
+
 function Behavior:SetMaxLinkCount( count )
     count = count or 4
     self.maxLinkCount = math.clamp( count, 1, 4 )
 end
+
 
 -- In practice, only called from a node placeholder Awake()
 function Behavior:Init( colorName )
@@ -91,11 +98,13 @@ function Behavior:Init( colorName )
     
     local numberGO = self.gameObject:GetChild("Color Blind")
     
-    if Options.colorBlindModeActive then
+    if Options.colorBlindModeActive == true then
         self.numberGO = numberGO
         numberGO.textRenderer.text = NumbersByColorName[ colorName ]
+        rendererGO.child.modelRenderer.opacity = 0.5
     else
         numberGO:Destroy()
+        rendererGO.child:Destroy()
     end
     
     ----------
@@ -143,19 +152,6 @@ function Behavior:Init( colorName )
     self.isInit = true
 end
 
-
---------------------------------------
-
-function Behavior:Start()   
-    if not self.gameObject.isDestroyed then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
-        if not self.isInit then
-            self:Init()
-        end
-    end
-end
-
-
---------------------------------------
 
 -- Called when left click or mouse hover the node's renderer.
 -- See in Init() above.

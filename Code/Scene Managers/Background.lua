@@ -22,14 +22,14 @@ function Behavior:Awake()
         frontColorId = #ColorList
     end
     
-    self.frontGO.modelRenderer.model = "Nodes/"..ColorList[frontColorId]
-    self.backGO.modelRenderer.model = "Nodes/"..ColorList[backColorId]
+    self.frontGO.modelRenderer.model = "Cubes/"..ColorList[frontColorId]
+    self.backGO.modelRenderer.model = "Cubes/"..ColorList[backColorId]
     
     self.frontGO:Animate("opacity", 0, 6, {
         loops = -1,
         OnLoopComplete = function(t)
             self.frontGO.modelRenderer.model = self.backGO.modelRenderer.model
-            self.backGO.modelRenderer.model = "Nodes/"..ColorList[nextColorId]
+            self.backGO.modelRenderer.model = "Cubes/"..ColorList[nextColorId]
 
             nextColorId = nextColorId + 1
             if nextColorId > #ColorList then

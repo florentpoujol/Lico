@@ -8,7 +8,7 @@ function Behavior:Start()
     local onFocus = function(input)
         if input.isFocused then
             --input.backgroundGO:Display(0.5)
-            input.backgroundGO.modelRenderer.model = "Cubes/Focused Input Background"
+            input.backgroundGO.modelRenderer.model = "Cubes/Gray 100"
             self.focusedInputId = table.getkey( self.inputs, input )
         else
             --input.backgroundGO:Display(1)
@@ -46,7 +46,7 @@ function Behavior:Start()
         go.backgroundGO = go.child
         go.backgroundGO:AddComponent("Toggle", {
             group = "random_difficulty",
-            checkedModel = "Cubes/Focused Input Background",
+            checkedModel = "Cubes/Gray 100",
             uncheckedModel = "Cubes/Black",
             difficulty = i,
             OnUpdate = function(t)
@@ -64,17 +64,18 @@ function Behavior:Start()
     -- user seed input
     
     local input = GameObject.Get("Seed Input").input
-    input.defaultValue = tostring( os.time()-1 ) -- -1 so that it's not the same as the first Generator.userSeed
+    --input.defaultValue = tostring( os.time()-10 ) -- -10 so that it's not the same as the first Generator.userSeed
     input.OnFocus = onFocus
     input.OnValidate = function(input)
         local text = input.gameObject.textRenderer.text
-        if text == input.defaultValue then
-            text = ""
+        if string.trim( text ) == "" then
+            text = Generator.userSeed
+            input.gameObject.textRenderer.text = text
         end
         Generator.userSeed = text
     end
     input.gameObject.textRenderer.text = Generator.userSeed
-        
+    
     local newButton = GameObject.Get("New Seed Button")
     newButton:AddTag("ui")
     newButton:AddEventListener("OnLeftClickReleased", function(go)

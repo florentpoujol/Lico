@@ -6,11 +6,11 @@ function Behavior:Awake(s)
     end
     
     Scene.Append("Main/Background")  
-
-    local uiMaskGO = GameObject.Get("UI Mask")
-    uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
-    uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
-    Tween.Timer(1, function() uiMaskGO.s:Animate(0,0.5) end)
+    
+    local uiMaskGO = Scene.Append("Main/UI Mask")
+    if Game.fromSplashScreen == true then
+        uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
+    end
     
     ----------
     -- Icons / Windows

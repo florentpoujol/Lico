@@ -6,8 +6,9 @@ Game = {
     levelToLoad = nil, -- set in [Level Cartridge/SetData levelNameGO OnClick event]
     deletedLinkCount = 0, -- updated in [Connection/OnClick], used in [Level Master/EndLevel]
     backgroundNextColorId = 1,
+    fromSplashScreen = false, -- true when the main menu s loaded after the splash screen. Set in [Splash Screen], used in [Main Menu].
     
-    nodesByName = nil, -- set/init in [Master Level/Awake], filled in [Node/Awake], used in [Master Level/ShowHint]
+    nodesByName = {}, -- set/init in [Master Level/Awake], filled in [Node/Awake], used in [Master Level/ShowHint]
 }
 
 
@@ -57,20 +58,38 @@ function SetRandomColors()
             -- regarding components that are == 0, either :
             -- 1) set one of them between 0 and 128
             -- 2) or set both components with the same value between 0 and 128
-        
-            -- find the components == 0
+            -- Or set the comp == 255 less than 255
+            
             local nullComps = {}
+            local fullComp = nil
             for i=1, 3 do
                 if color[i] == 0 then
                     table.insert( nullComps, i )
+                elseif color[i] == 255 then
+                    fullComp = i
                 end
             end
-            -- nullComps == { 1, 2 }, { 1, 3 } or { 2, 3 }
-            -- now sets one or the two of the components to the random value
-            local value = math.random(0,128)
-            for i=1, math.random(2) do
-                color[ table.remove( nullComps, math.random( #nullComps ) ) ] = value
+            
+            if math.random(2) == 1 then
+                -- find the components == 0
+                local nullComps = {}
+                for i=1, 3 do
+                    if color[i] == 0 then
+                        table.insert( nullComps, i )
+                    end
+                end
+                
+                -- nullComps == { 1, 2 }, { 1, 3 } or { 2, 3 }
+                -- now sets one or the two of the components to the random value
+                local value = math.random(0,127)
+                for i=1, math.random(2) do
+                    color[ table.remove( nullComps, math.random( #nullComps ) ) ] = value
+                end
+            else
+                color[fullComp] = math.random(129,255)
             end
+            
+            -- in either case, could also make the other component equidistant from 128
             
         else
             -- in this case two comps == 255, one == 0
@@ -80,8 +99,11 @@ function SetRandomColors()
                     table.insert( fullComps, i )
                 end
             end
-            local value = math.random(128,255)
+            -- set one of the full component's value between 128 and 255
+            local value = math.random(129,255)
             color[ fullComps[ math.random(2) ] ] = value
+            
+            -- could also make the comp == 0 equidistant from 128
         end
         
         ColorsByName[ name ] = color

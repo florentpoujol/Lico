@@ -3,7 +3,7 @@ function Behavior:Awake()
     self.completedGO = self.gameObject:GetChild("Completed")
     
     local bgGO = self.gameObject:GetChild("Background")
-    bgGO.modelRenderer.model = "Nodes/"..ColorList[ math.random( #ColorList ) ]
+    bgGO.modelRenderer.model = "Cubes/"..ColorList[ math.random( #ColorList ) ]
 end
 
 -- Called from [Levels/BuildLevelGrid]
