@@ -1,7 +1,7 @@
 
 -- buggy levels
 -- 442.1419354847   link rouge vers cyan  + 3 marks pour un node qui n'a que deux liens
-
+--528781
 
 Generator = {
     levelName = "", -- set in SetSeed(), used in Generator.level.initFunction()
@@ -188,13 +188,16 @@ function Generator.Generate()
         end
     end
     
-    if idToRemove == 6 and difficulty == 1 then
-        table.remove( colorList, 1 ) -- removes the red
+    if idToRemove == 7 and difficulty == 1 then
+        -- idToRemove was 6, so only one element was removed
+        -- remove the other one now
+        table.remove( colorList, 1 )
     end
     
     if math.random(2) == 1 then
         colorList = table.reverse( colorList )
     end
+    --print("#colorList", #colorList, idToRemove, difficulty)
     -- now colorList contains 4 to 6 colors.
    
     local colorId = math.random( #colorList )
@@ -235,13 +238,16 @@ function Generator.Generate()
                 else
                     -- remember that when #colorList<6 the first and last color are not linkable
                     colorList = table.reverse( colorList )
-                    colorId = math.random( 2 ) -- 1 is the same color as last time
+                    
+                    local length = #colorList
+                    colorId = math.random( length-1, length ) -- 1 is the same color as last time
                 end
             elseif colorId > #colorList then
                 if #colorList == 6 then
                     colorId = 1
                     math.random( 2 ) -- leave that here ! see above
                 else
+                    
                     colorList = table.reverse( colorList )
                     colorId = math.random( 2 )
                 end
@@ -288,22 +294,23 @@ function Generator.Generate()
     
     for i=1, #nodes do
         local node = nodes[i]
-        local linkCount = 2
+        local linkCount = #node.linkedNeighbours
         
-        local neighboursCount = #node.linkedNeighbours
-        if neighboursCount == 1 then
-            linkCount = 2
-        elseif neighboursCount == 2 then
-            linkCount = 2
-            for j=1, #nodes do
-                if nodes[j].previousNode == node then
-                    -- _node.previousNode always exist except for the very first node of the path, with never has more than one linkedNeighbours
-                    linkCount = 3
-                end
+        if node.previousNode ~= nil then -- always true except for the very first node
+            linkCount = linkCount + 1
+        end
+        
+        if difficulty == 1 then
+            linkCount = math.max( linkCount, 2 )
+            if math.random(3) == 1 then
+                linkCount = linkCount + 1
             end
-        elseif neighboursCount == 3 then -- can this happen ?
-            print("3 neighbours", node)
-            linkCount = 4
+        elseif difficulty == 2 then
+            if math.random(5) == 1 then
+                linkCount = linkCount + 1
+            end
+        else
+            --linkCount = math.max( linkCount, 2 ) -- this "hides" the nodes that would have only one link possible (start and end of path)
         end
         
         -- if node is on an edge
@@ -312,10 +319,8 @@ function Generator.Generate()
             node.position.y == 1 or node.position.y == Generator.gridSize.y
         then
             linkCount = math.min( linkCount, 3 )
-        end
         
-        -- if node is in a corner
-        if 
+        elseif  -- if node is in a corner
             (node.position.x == 1 or node.position.x == Generator.gridSize.x) and
             (node.position.y == 1 or node.position.y == Generator.gridSize.y)
         then
@@ -346,12 +351,8 @@ function Generator.Generate()
             local position = Vector3( -offset.x, 0, offset.y ) -- keep the variable, used in debug maze
             nodeGO.transform.localPosition = position
             
-            
-            
-            
             nodeGO.s:SetMaxLinkCount( node.linkCount )
             nodeGO.s:Init( node.colorName )
-            
             
             -- debug arrows
             if Daneel.Config.debug.enableDebug == true then
@@ -423,8 +424,8 @@ function Generator.ProcessUserSeed()
     end
     
     if props ~= nil then
-        Generator.gridSize = Vector2( tonumber(props:sub(1,2)), tonumber(props:sub(3,4)) )
-        Generator.difficulty = tonumber( props:sub(5,5) )
+        Generator.gridSize = Vector2( tonumber( props:sub(1,1) ), tonumber( props:sub(2,2) ) )
+        Generator.difficulty = tonumber( props:sub(3,3) )
     end
     -- if no parameters included in the seed, they are already set via the form
     
