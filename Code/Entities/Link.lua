@@ -51,6 +51,10 @@ function Behavior:OnClick()
     
     --soundLinkBroken:Play()
     self.gameObject:Destroy()
+    
+    -- add again the tag so that the code in Node:Update() 
+    -- still finds the link renderer and prevent the node to be deselected
+    self.sourceColorGO:AddTag("link_renderer")
 end
 
 -- Called when the level ends

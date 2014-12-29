@@ -19,10 +19,12 @@ function Behavior:Awake( s )
     
     Game.nodesByName = {} -- used in Nodes, leave it there
     
-    local level = Game.levelToLoad or Levels[1] -- Game.levelToLoad is set to one entry of the Levels table in a level cartridge OnLeftClickReleased event listener
+    Game.levelToLoad = Game.levelToLoad or Levels[1]
+    local level = Game.levelToLoad -- Game.levelToLoad is set to one entry of the Levels table in a level cartridge OnLeftClickReleased event listener
     self.levelNameGO = GameObject.Get("Level Name")
     
     self.levelRoot = Scene.Append( level.scenePath )
+    
     --self.levelRoot.transform.position = Vector3(0)
     
     if not level.isRandom then
@@ -51,9 +53,6 @@ function Behavior:Awake( s )
         helpWindowGO = helpGO:GetChild("Window")
         if helpWindowGO ~= nil then
             GameObject.Get("Help Window Parent"):Append(helpWindowGO)
-            
-            -- add a hud component on the help window's content game object
-            
         end
     end
 
@@ -72,11 +71,11 @@ function Behavior:Awake( s )
     
     if helpWindowGO ~= nil then
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
-        local contentGO = helpWindowGO.child 
-        if contentGO.hud == nil then
-            GUI.Hud.New(contentGO)
+        local originGO = helpWindowGO.child -- "Origin" 
+        if originGO.hud == nil then
+            --GUI.Hud.New(originGO)
         end
-        contentGO.hud.position = Vector2(0,40) 
+        --originGO.hud.savedPosition = originGO.hud.position
     else
         helpIconGO.parent:RemoveTag("icon")
         helpIconGO.parent:AddTag("inactive_icon")

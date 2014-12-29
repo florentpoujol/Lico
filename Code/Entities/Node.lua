@@ -3,7 +3,8 @@ colorName string ""
 maxLinkCount number 4
 /PublicProperties]]
 
-local nodesByPositions = {}
+
+local nodesBySGridPositions = {} -- Vector3:ToString() = GameObject
 
 function Behavior:Awake(s)
     if s ~= true then
@@ -20,6 +21,8 @@ function Behavior:Awake(s)
         local name = self.gameObject.name
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
+        
+        realNode.s.gridPosition = self.gameObject.gridPosition -- set by the [Node Position Finder] script
         
         realNode.s:SetMaxLinkCount( self.maxLinkCount )
         if self.colorName == "" and self.gameObject.modelRenderer ~= nil then
@@ -42,10 +45,10 @@ function Behavior:Awake(s)
     self.isSelected = false  
 
     self.linkableNodes = {}
+    self.gridPosition = Vector2(0)
+    
     self.nodeGOs = {} -- nodes this node is connected to -- filled in Link()
     self.linkGOs = {}
-    
-    self.frameCount = 0
     
     self.isInit = false
 end
@@ -56,6 +59,21 @@ function Behavior:Start()
         if not self.isInit then
             self:Init()
         end
+    end
+end
+
+
+function Behavior:Update()
+    if self.isSelected == true and CS.Input.WasButtonJustPressed("LeftMouse") then
+        -- check that the mouse is not over a link
+        -- if not, then deselect node
+        local links = GameObject.GetWithTag("link_renderer")
+        for i=1, #links do 
+            if links[i].isMouseOver == true then
+                return
+            end
+        end
+        self:Select(false)
     end
 end
 
@@ -134,19 +152,35 @@ function Behavior:Init( colorName )
     ----------
     -- get linkable nodes
     
-    local offsets = { Vector3(-2, 0, 0), Vector3(2, 0, 0), Vector3(0, 0, -2), Vector3(0, 0, 2) }
-    local position = self.gameObject.transform.position 
+    local gridOffsets = { x = Vector2(-1,0), y = Vector2(0,-1) }
     
-    for i=1, 4 do
-        local positionToTest = (position + offsets[i]):ToString()
-        local otherNode = nodesByPositions[ positionToTest ]
-        if otherNode ~= nil then
-            table.insertonce( self.linkableNodes, otherNode )
-            table.insertonce( otherNode.s.linkableNodes, self.gameObject )
+    local gridSize = Game.levelToLoad.gridSize or Vector2(1,1)
+    if Game.levelToLoad.isRandom == true then
+        gridSize = Generator.gridSize
+    end
+    local maxNodeCount = math.max( self.gridPosition.x, self.gridPosition.y )
+
+    for xOrY, gridOffset in pairs( gridOffsets ) do
+        for i=1, self.gridPosition[ xOrY ] do -- limits the number of iteration
+                
+            local gridPositionToTest = self.gridPosition + gridOffset
+            if gridPositionToTest[ xOrY ] < 1 then
+                -- outside the grid
+                break
+            end
+
+            local otherNode = nodesBySGridPositions[ gridPositionToTest:ToString() ]
+            if otherNode ~= nil then
+                table.insert( self.linkableNodes, otherNode )
+                table.insert( otherNode.s.linkableNodes, self.gameObject )
+                break
+            else
+                gridOffset = gridOffset + gridOffsets[ xOrY ]
+            end
         end
     end
     
-    nodesByPositions[ position:ToString() ] = self.gameObject
+    nodesBySGridPositions[ self.gridPosition:ToString() ] = self.gameObject
     
     --
     self.isInit = true
@@ -173,14 +207,23 @@ function Behavior:OnMouseEnter()
             end
         end
     end
-   
-    self:Select(true)
+    
+    -- When the mouse hover the last node,
+    -- the link is created and the level completed/ended
+    -- before the node is actually selected
+    if Game.levelEnded == false then
+        self:Select(true)
+    end
 end
 
 
 -- Called from OnMouseEnter() to selected this node
 -- or from the newly selected node (to unselect this one).
 function Behavior:Select( select )
+    if Game.levelEnded == true then
+        return
+    end
+    
     if select == nil then
         select = not self.isSelected
         -- false if true (un select if already selected)
@@ -288,14 +331,7 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
         -- loop on the existing marks in rfrom biggest num to 1
         if i <= nodeLinkCount then
             -- hide the link
-            
-            
             if not go.isHidden then
-                --go:Display(0)
-                
-                --go:Animate("opacity", 0.5, 0.5, function(tweener) 
-                    --tweener.target.opacity = 0 
-                --end)
                 go.displayAnimOriginalScale = go.displayAnimOriginalScale or go.transform.localScale
                 if go.scaleAnim ~= nil then
                     go.scaleAnim:Destroy()
@@ -314,7 +350,7 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
         end
     end
     
-    if nodeLinkCount >= self.maxLinkCount then
+    if self.isSelected == true and nodeLinkCount >= self.maxLinkCount then
         self:Select(false)
     end
 end
@@ -371,13 +407,14 @@ function Behavior:EndLevel()
     
     self:UpdateLinkQueue(99) -- do as if the node had 4 links, hidding all the link marks
 
-    --self.pillarGO.transform.localScale = 0 -- using the opacity is not enough as the last node get somehow automatically reselected
     self.pillarGO:Destroy()
     
     -- hide the numbers
     if self.numberGO ~= nil then
         self.numberGO.textRenderer.opacity = 0
     end
+    
+    nodesBySGridPositions = {}
 end
 
 Daneel.Debug.RegisterScript(Behavior)

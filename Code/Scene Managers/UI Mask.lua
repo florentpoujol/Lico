@@ -19,6 +19,8 @@ function Behavior:Awake()
     
     self.opacityMask = self.gameObject.child
     self.opacityMask.fullOpacity = self.opacityMask.modelRenderer.opacity
+    
+    self.gameObject.modelRenderer.opacity = 0
     self.opacityMask.modelRenderer.opacity = 0
     
     self.frontBackgroundGO = GameObject.GetWithTag("front_background")[1]

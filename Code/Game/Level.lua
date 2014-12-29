@@ -1,9 +1,39 @@
 
+local function colorTutorialsInitFunction()
+    -- hide the node marks
+    local nodeGOs = GameObject.GetWithTag("node")
+    for i=1, #nodeGOs do
+        local node = nodeGOs[i]
+        for j=1, #node.s.linksQueue.marks do
+            node.s.linksQueue.marks[j].modelRenderer.model = nil
+        end
+    end
+    
+    -- prevent links to be removed
+    local linkScript = Asset("Entities/Link", "Script")
+    linkScript.OnClick = function() end
+    -- the function is replaced and not nillified because 
+    -- it is still called when the click happens on the link's renderer
+end
+
+
 Levels = {
+    
+    
     {
-        name = "1.1",
-        scenePath = "Levels/1.1",
+        name = "Colors 1",
+        scenePath = "Levels/Colors",
+        initFunction = colorTutorialsInitFunction,
+        --gridSize = Vector2(3,4),
     },
+    
+    {
+        name = "Colors 2",
+        scenePath = "Levels/Colors 2",
+        initFunction = colorTutorialsInitFunction,
+        --gridSize = Vector2(6,4),
+    },
+     
 }
 
 for i, level in ipairs( Levels ) do

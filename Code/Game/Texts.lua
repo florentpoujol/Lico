@@ -9,22 +9,16 @@ Texts = {
 -- Tutorials
 
     goal = 
-[[All the coloured nodes must be linked to one or several others so that they form a single (possibly ramified) chain.
-Each node can be linked to other nodess of the same color or the two closest color.
-Ie:]],
+[[All the nodes must be linked to one or several others so that they form a single chain.
+Each colors can be linked to the two closest colors, plus itself.]],
 
     controls = 
-[[Hover on a node to select it, then hover on another node to link them together (when possible).]],
+[[Hover on a node to select it, then hover on another node to link them together (if they can).
+Click outside a node to deselect it.]],
     
-    maxLinks =
-[[The white segments around a node represents the MAXIMUM number of links a node CAN make.
-
-You can click on a link to remove it.]],
-
-requiredLinks = [[The black segments around a node represents the number of links the node is REQUIRED to make to complete the level.
-
-Also, links can't cross each others.]], --'
-
+    links =
+[[The cubes inside each node shows the maximum number of links this node can make.
+Click on a link to remove it.]],
 
 -- Options
 
