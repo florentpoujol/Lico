@@ -2,6 +2,7 @@
 -- buggy levels
 -- 442.1419354847   link rouge vers cyan  + 3 marks pour un node qui n'a que deux liens
 --528781
+-- 442.1419929379 >
 
 Generator = {
     levelName = "", -- set in SetSeed(), used in Generator.level.initFunction()
@@ -19,8 +20,8 @@ Generator = {
         scenePath = "Levels/Random",
         isRandom = true,
         
-        -- called from [Mater Level/Start] with the scripted behavior as first argument
-        initFunction = function( masterLevelScript )
+        -- Called from [Mater Level/Start]
+        initFunction = function()
             if Generator.fromGeneratorForm == true then
                 Generator.ProcessUserSeed()
             else
@@ -29,11 +30,11 @@ Generator = {
             end
             Generator.fromGeneratorForm = false
             
-            masterLevelScript.levelNameGO.textRenderer.text = Generator.levelName
+            MasterLevel.levelNameGO.textRenderer.text = Generator.levelName
             
             Daneel.Event.Listen("RandomLevelGenerated", function()
-                masterLevelScript:ReparentNodes()
-                masterLevelScript:UpdateLevelCamera()
+                MasterLevel:ReparentNodes()
+                MasterLevel:UpdateLevelCamera()
             end) -- fired at the end of Generate()
             
             Generator.Generate()
@@ -54,7 +55,7 @@ function Generator.Generate()
     
     local nodes = { 
         { 
-            position = Vector2(1),
+            gridPosition = Vector2(1),
             -- The components represents the positive offset of the node from the top right corner (which is 1,1)
             -- They are ordered in the array in the order they must be created for the rendering of the pillar to be OK
     
@@ -66,7 +67,7 @@ function Generator.Generate()
     
     local function nodeExistsInList( list, node )
         for i=1, #list do
-            if list[i].position == node.position then
+            if list[i].gridPosition == node.gridPosition then
                 return true
             end
         end
@@ -75,7 +76,7 @@ function Generator.Generate()
     
     local function getByPosition( list, pos ) 
         for i=1, #list do
-            if list[i].position == pos then
+            if list[i].gridPosition == pos then
                 return list[i]
             end
         end
@@ -89,14 +90,14 @@ function Generator.Generate()
         local currentNode = nodes[i]
         
         for comp, offset in pairs( offsetByComponent ) do
-            local position = currentNode.position + offset
+            local gridPosition = currentNode.gridPosition + offset
             
-            if position[ comp ] <= gridSize[ comp ] then
+            if gridPosition[ comp ] <= gridSize[ comp ] then
                 
-                local node = getByPosition( nodes, position ) 
+                local node = getByPosition( nodes, gridPosition ) 
                 if node == nil then
                     node = {
-                        position = position,
+                        gridPosition = gridPosition,
                         isVisited = false,
                         neighbours = {
                             currentNode
@@ -120,10 +121,10 @@ function Generator.Generate()
         if #node.neighbours < 4 then
             -- expected neighbours
             local en = {
-                getByPosition( nodes, node.position + Vector2(1,0) ),
-                getByPosition( nodes, node.position + Vector2(-1,0) ),
-                getByPosition( nodes, node.position + Vector2(0,1) ),
-                getByPosition( nodes, node.position + Vector2(0,-1) ),
+                getByPosition( nodes, node.gridPosition + Vector2(1,0) ),
+                getByPosition( nodes, node.gridPosition + Vector2(-1,0) ),
+                getByPosition( nodes, node.gridPosition + Vector2(0,1) ),
+                getByPosition( nodes, node.gridPosition + Vector2(0,-1) ),
             }            
             
             for j, _node in pairs(en) do
@@ -315,14 +316,14 @@ function Generator.Generate()
         
         -- if node is on an edge
         if 
-            node.position.x == 1 or node.position.x == Generator.gridSize.x or
-            node.position.y == 1 or node.position.y == Generator.gridSize.y
+            node.gridPosition.x == 1 or node.gridPosition.x == Generator.gridSize.x or
+            node.gridPosition.y == 1 or node.gridPosition.y == Generator.gridSize.y
         then
             linkCount = math.min( linkCount, 3 )
         
         elseif  -- if node is in a corner
-            (node.position.x == 1 or node.position.x == Generator.gridSize.x) and
-            (node.position.y == 1 or node.position.y == Generator.gridSize.y)
+            (node.gridPosition.x == 1 or node.gridPosition.x == Generator.gridSize.x) and
+            (node.gridPosition.y == 1 or node.gridPosition.y == Generator.gridSize.y)
         then
             linkCount = math.min( linkCount, 2 )
         end
@@ -343,7 +344,7 @@ function Generator.Generate()
     local buildGrid = function()
         for i=1, #nodes do
             local node = nodes[i]
-            local offset = node.position -- offset from top right corner of the grid      
+            local offset = node.gridPosition -- offset from top right corner of the grid      
             offset = offset - Vector2(1) -- now, offset is on base 0 (top right node is 0,0, node on the opposite side is {gridSize.x-1,gridSize.y-1})
             offset = offset * 2 -- nodes are actually two units appart (nodes are 1 unit squares, with 1 unit between each of them)
             
@@ -351,6 +352,7 @@ function Generator.Generate()
             local position = Vector3( -offset.x, 0, offset.y ) -- keep the variable, used in debug maze
             nodeGO.transform.localPosition = position
             
+            nodeGO.s.gridPosition = node.gridPosition
             nodeGO.s:SetMaxLinkCount( node.linkCount )
             nodeGO.s:Init( node.colorName )
             
@@ -361,7 +363,8 @@ function Generator.Generate()
                 local linkedNeighbours = nodes[i].linkedNeighbours
                 if linkedNeighbours ~= nil and #linkedNeighbours > 0 then
                     for j=1, #linkedNeighbours do
-                        offset = linkedNeighbours[j].position
+                        offset = linkedNeighbours[j].gridPosition
+                        
                         offset = ( offset - Vector2(1) ) * 2
                         local targetPosition = Vector3( -offset.x, 0, offset.y )
                         
@@ -374,7 +377,7 @@ function Generator.Generate()
                             modelRenderer = { model = "Debug/Arrow", opacity = 0 },
                             tags = {"debug_maze"}
                         } )
-        
+                        
                         go.transform:LookAt( nodesOriginGO.transform:LocalToWorld( targetPosition ) )
                         local angles = go.transform.localEulerAngles
                         angles.z = 0

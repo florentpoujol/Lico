@@ -18,23 +18,29 @@ end
 
 
 Levels = {
-    
-    
     {
         name = "Colors 1",
         scenePath = "Levels/Colors",
         initFunction = colorTutorialsInitFunction,
-        --gridSize = Vector2(3,4),
     },
     
     {
         name = "Colors 2",
         scenePath = "Levels/Colors 2",
         initFunction = colorTutorialsInitFunction,
-        --gridSize = Vector2(6,4),
     },
-     
+    
+    {
+        name = "Links 1",
+        scenePath = "Levels/Links",
+    },
+    
+    {
+        name = "Links 2",
+        scenePath = "Levels/Links 2",
+    },
 }
+
 
 for i, level in ipairs( Levels ) do
     level.id = level.id or i

@@ -1,16 +1,21 @@
 
+MasterLevel = nil -- scripted behavior instance
+
 function Behavior:Awake( s )
     if s ~= true then
         self:Awake(true)
         return
     end
     
+    MasterLevel = self
+    -- MasterLevel is accessed from the initfunction of the random level 
+    -- and to call CheckVictory() from [Link/Init], when the link animation has completed
+    
     SetRandomColors() -- set new random colors
     
     Scene.Append("Main/Background")
 
     local uiMaskGO = Scene.Append("Main/UI Mask")
-    --uiMaskGO.s:Start() -- call [UI Mask/Start] function right away because I need it now (to know which color is the background)
     uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
     Tween.Timer(1, function() uiMaskGO.s:Animate(0,0.5) end) -- now, the mask hides the whole level, wait 0.5sec to fade it out
     
@@ -60,6 +65,8 @@ function Behavior:Awake( s )
     -- Icons
     
     local menuIconGO = GameObject.Get("Icons.Main Menu.Renderer")
+    self.menuIconGO = menuIconGO -- used in EndLevel()
+    
     menuIconGO:AddEventListener( "OnLeftClickReleased", function(go)
         uiMaskGO.s:Animate(1,0.5, function()
             Scene.Load("Main/Main Menu")
@@ -117,7 +124,7 @@ function Behavior:Awake( s )
     -- End of level
     
     Game.levelEnded = false
-    Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from [Node/CheckVictory]
+    Daneel.Event.Listen( "EndLevel", self.gameObject ) -- fired from CheckVictory()
     self.levelStartTime = os.clock()
      
     ----------
@@ -258,7 +265,56 @@ function Behavior:Update()
 end
 
 
--- Called when EndLevel event is fired from [Node/CheckVictory]
+-- Called from [Link.Init] when a link animation has completed
+function Behavior:CheckVictory()
+    if Game.levelEnded == true then
+        return
+    end
+    
+    local nodes = GameObject.GetWithTag("node")
+    
+    for i, node in pairs( nodes ) do
+        -- quick-search for nodes without links
+        if #node.s.linkGOs == 0 then
+            return
+        end
+    end
+    
+    
+    -- check that all nodes are actually connected together, using simplified BFS (breadth-first search), 
+    -- if all nodes are connected, the algo must find as many nodes as they are
+    
+    local visited = {}
+    local toBeVisited = { nodes[1] }
+    
+    while #toBeVisited > 0 do
+        local node = table.remove( toBeVisited, 1 )
+        table.insert( visited, node )
+        node.wasVisited = true
+        
+        for i, linkedNode in pairs( node.s.nodeGOs ) do
+            if not linkedNode.wasVisited and not linkedNode.willBeVisited then
+                table.insert( toBeVisited, linkedNode )
+                linkedNode.willBeVisited = true
+            end
+        end
+    end
+    
+    for i, node in pairs(nodes) do
+        node.wasVisited = nil
+        node.willBeVisited = nil        
+    end
+    
+    if #visited ~= #nodes then
+        return
+    end
+    
+    -- By now all nodes are OK and linked together
+    Daneel.Event.Fire("EndLevel") -- catched by [Master Level]'s, all node's and all link's EndLevel()
+end
+
+
+-- Called when EndLevel event is fired from CheckVictory()
 function Behavior:EndLevel()
     Game.levelEnded = true
     
@@ -266,29 +322,50 @@ function Behavior:EndLevel()
     if not Game.levelToLoad.isRandom then
         local currentLevel = GetLevel( Game.levelToLoad.name )
         if currentLevel ~= nil then -- is nil for random level
-            currentLevel.isCompleted = true
-            SaveCompletedLevels()
+            if not currentLevel.isCompleted then
+                currentLevel.isCompleted = true
+                SaveCompletedLevels()
+            end
             
             local nextLevel = nil
-            for i, level in ipairs( Levels ) do
+            for i=1, #Levels do
+                local level = Levels[i]
                 if not level.isCompleted and level.id > currentLevel.id then
                     nextLevel = level
                     break
                 end
             end
+            
             if nextLevel == nil then
-                nextLevel = Levels[ math.random( #Levels ) ]
+                -- all levels must have been completed already, get next level
+                nextLevel = GetLevel( currentLevel.id + 1 )
             end
+            
+            -- if nextLevel is still nill, 
+            --if nextLevel == nil then
+                --nextLevel = Levels[ math.random( #Levels ) ]
+            ---end
             Game.levelToLoad = nextLevel
         end
     end
     
-    local nextIconParent = self.nextIconGO.parent -- self.nextIconGO is the renderer, with the actual icon
-    nextIconParent:RemoveTag("inactive_icon")
-    InitIcons( nextIconParent )
+    local iconGO = nil
     
-    --local tooltip = nextIconParent:GetChild("Tooltip")
-    self.nextIconGO:FireEvent("OnMouseEnter", self.nextIconGO)
+    if Game.levelToLoad ~= nil then
+        local nextIconParent = self.nextIconGO.parent -- self.nextIconGO is the renderer, with the actual icon
+        nextIconParent:RemoveTag("inactive_icon")
+        InitIcons( nextIconParent )
+    
+        iconGO = self.nextIconGO
+    else
+        iconGO = self.menuIconGO    
+    end
+    
+    if iconGO ~= nil then
+        Tween.Timer(1.5, function()
+            iconGO:FireEvent("OnMouseEnter", iconGO)
+        end)
+    end
 end
 
 Daneel.Debug.RegisterScript(Behavior)

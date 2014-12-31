@@ -55,10 +55,8 @@ end
 
 
 function Behavior:Start()   
-    if not self.gameObject.isDestroyed then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
-        if not self.isInit then
-            self:Init()
-        end
+    if not self.gameObject.isDestroyed and not self.isInit then -- true on the node placeholders, Start() is apparently called before the game object is actually destroyed
+        self:Init()
     end
 end
 
@@ -202,8 +200,8 @@ function Behavior:OnMouseEnter()
             not table.containsvalue( selectedNode.s.nodeGOs, self.gameObject ) -- if they are not already connected
         then
             -- check there isn't a bar in between
-            if selectedNode.s:CanLink( self.gameObject ) then
-                selectedNode.s:Link( self.gameObject )
+            if selectedNode.s:CanLinkTo( self.gameObject ) then
+                selectedNode.s:LinkTo( self.gameObject )
             end
         end
     end
@@ -257,11 +255,11 @@ end
 
 -- Called from OnMouseEnter()
 -- Check there isn't a link or other node in between
-function Behavior:CanLink( targetGO )   
+function Behavior:CanLinkTo( targetGO )   
     if table.containsvalue( self.linkableNodes, targetGO ) then
         -- both node can link a priori
         -- now check that there isn't a link in between        
-        local linkRndrGOs = GameObject.GetWithTag("link_hitbox") 
+        local linkRndrGOs = GameObject.GetWithTag("link_renderer") 
         if #linkRndrGOs == 0 then
             return true
         end
@@ -282,45 +280,29 @@ end
 
 
 -- Called from OnMouseEnter()
-function Behavior:Link( targetGO )
+function Behavior:LinkTo( targetGO )
     local linkGO = Scene.Append("Entities/Link")   
-    linkGO.parent = self.gameObject
-    linkGO.transform.localPosition = Vector3(0)
+    linkGO.s:Init( self.gameObject, targetGO )
     
-    local selfPosition = self.gameObject.transform.position
-    local otherPosition = targetGO.transform.position
-    
-    local direction = otherPosition - selfPosition
-    local linkLength = direction:GetLength() -- not always == 2 ! (can be 2, 4, 6, 8, ...)
-    
-    linkGO.transform:LookAt(otherPosition)
-    linkGO.transform:MoveOriented(Vector3(0,0, -linkLength/2 ))   
-    linkGO.transform.localScale = Vector3(1,1, linkLength - 1 + 0.02 ) -- make it slighly longer than the gap between the nodes
-    
-    -- make the link appear in the same plane as the nodes
-    local angles = linkGO.transform.localEulerAngles
-    angles.z = 0
-    linkGO.transform.localEulerAngles = angles
-    
-    --
-
-    linkGO.s:SetColor( self.color, targetGO.s.color )
-    
-    linkGO.s.nodeGOs = { self.gameObject, targetGO }
-    --linkGO.s.nodePositions = { selfPosition, otherPosition } -- used in CanLink()
-    
-    table.insert( self.nodeGOs, targetGO )
-    table.insert( targetGO.s.nodeGOs, self.gameObject )
-    
-    table.insert( self.linkGOs, linkGO )
-    table.insert( targetGO.s.linkGOs, linkGO )
-    
-    --
-    self:UpdateLinkQueue()
-    targetGO.s:UpdateLinkQueue()
-    
-    self:CheckVictory()
+    self:RegisterLink( linkGO, targetGO )
+    targetGO.s:RegisterLink( linkGO, self.gameObject )
 end
+
+
+-- Called from 
+-- [Node/LinkTo] or
+-- [Link/OnClick] when a link is removed
+function Behavior:RegisterLink( linkGO, nodeGO, remove )
+    local func = table.insert
+    if remove == true then
+        func = table.removevalue
+    end
+    func( self.nodeGOs, nodeGO )
+    func( self.linkGOs, linkGO )
+    
+    self:UpdateLinkQueue()
+end
+
 
 -- Called from Link() and [Link/OnClick()]
 function Behavior:UpdateLinkQueue( nodeLinkCount )
@@ -355,49 +337,6 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
     end
 end
 
--- Called at the end of Link()
-function Behavior:CheckVictory()   
-    local nodes = GameObject.GetWithTag("node")
-    
-    for i, node in pairs( nodes ) do
-        -- quick-search for nodes without links
-        if #node.s.linkGOs == 0 then
-            return false
-        end
-    end
-    
-    
-    -- check that all nodes are actually connected together, using simplified BFS (breadth-first search), 
-    -- if all nodes are connected, the algo must find as many nodes as they are
-    
-    local visited = {}
-    local toBeVisited = { nodes[1] }
-    
-    while #toBeVisited > 0 do
-        local node = table.remove( toBeVisited, 1 )
-        table.insert( visited, node )
-        node.wasVisited = true
-        
-        for i, linkedNode in pairs( node.s.nodeGOs ) do
-            if not linkedNode.wasVisited and not linkedNode.willBeVisited then
-                table.insert( toBeVisited, linkedNode )
-                linkedNode.willBeVisited = true
-            end
-        end
-    end
-    
-    for i, node in pairs(nodes) do
-        node.wasVisited = nil
-        node.willBeVisited = nil        
-    end
-    
-    if #visited ~= #nodes then
-        return false
-    end
-    
-    -- By now all nodes are OK and linked together
-    Daneel.Event.Fire("EndLevel") -- catched by [Master Level/EndLevel] and all node's EndLevel()
-end
 
 -- Called on all nodes when EndLevel event is fired from one node's CheckVictory()
 function Behavior:EndLevel()

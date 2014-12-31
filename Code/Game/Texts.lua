@@ -18,6 +18,7 @@ Click outside a node to deselect it.]],
     
     links =
 [[The cubes inside each node shows the maximum number of links this node can make.
+
 Click on a link to remove it.]],
 
 -- Options

@@ -4,6 +4,7 @@ function Behavior:Awake()
     
     local bgGO = self.gameObject:GetChild("Background")
     bgGO.modelRenderer.model = "Cubes/"..ColorList[ math.random( #ColorList ) ]
+    self.bgMaskGO = bgGO.child
 end
 
 -- Called from [Levels/BuildLevelGrid]
@@ -17,10 +18,12 @@ function Behavior:SetData( level )
     local bg = children[2]
     bg:AddTag("ui")
     bg.OnMouseEnter = function(go)
-        levelNameGO.textRenderer.text = "          Play          "
+        --levelNameGO.textRenderer.text = "          Play          "
+        self.bgMaskGO:Display(0.2)
     end
     bg.OnMouseExit = function(go)
-        levelNameGO.textRenderer.text = levelNameGO.levelName
+        --levelNameGO.textRenderer.text = levelNameGO.levelName
+        self.bgMaskGO:Display(0.4)        
     end
     
     bg.OnLeftClickReleased = function(go)
