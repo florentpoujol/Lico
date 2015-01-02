@@ -1,5 +1,5 @@
 
-local function colorTutorialsInitFunction()
+local function colorTutorialsOnStart()
     -- hide the node marks
     local nodeGOs = GameObject.GetWithTag("node")
     for i=1, #nodeGOs do
@@ -11,9 +11,16 @@ local function colorTutorialsInitFunction()
     
     -- prevent links to be removed
     local linkScript = Asset("Entities/Link", "Script")
+    linkScript.oOnClick = linkScript.OnClick
     linkScript.OnClick = function() end
     -- the function is replaced and not nillified because 
     -- it is still called when the click happens on the link's renderer
+end
+
+
+local function colorTutorialsOnComplete()
+    local linkScript = Asset("Entities/Link", "Script")
+    linkScript.OnClick = linkScript.oOnClick
 end
 
 
@@ -21,13 +28,15 @@ Levels = {
     {
         name = "Colors 1",
         scenePath = "Levels/Colors",
-        initFunction = colorTutorialsInitFunction,
+        OnStart = colorTutorialsOnStart,
+        OnComplete = colorTutorialsOnComplete
     },
     
     {
         name = "Colors 2",
         scenePath = "Levels/Colors 2",
-        initFunction = colorTutorialsInitFunction,
+        OnStart = colorTutorialsOnStart,
+        OnComplete = colorTutorialsOnComplete
     },
     
     {

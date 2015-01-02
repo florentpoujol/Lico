@@ -55,7 +55,7 @@ function Behavior:BuildLevelGrid()
             local cartridgeGO = self.gridGO:Append("Entities/Level Cartridge")
             cartridgeGO.transform.localPosition = Vector3( self.cartridgeWidth * x, -self.cartridgeHeight * y, 0 )
             
-            cartridgeGO.s:SetData( Levels[i] )
+            cartridgeGO.s:Init( Levels[i] )
             
             x = x + 1
             if x >= self.gridLayout.x then
@@ -69,3 +69,4 @@ function Behavior:BuildLevelGrid()
         end
     end
 end
+

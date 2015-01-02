@@ -244,6 +244,8 @@ function Behavior:Select( select )
             selectedNode.s:Select(false)
         end
         self.gameObject:AddTag("selected_node")
+        
+        SoundManager.Play("select_node")
     else
 
         self.pillarGO:Animate("opacity", 0.05, 0.5)

@@ -5,12 +5,14 @@ function Behavior:Awake(s)
         return
     end
     
-    Scene.Append("Main/Background")  
+    local bg = Scene.Append("Main/Background")  
+    bg.s:Init()
     
-    local uiMaskGO = Scene.Append("Main/UI Mask")
-    if Game.fromSplashScreen == true then
+    local uiMaskGO = Scene.Append("Main/Background")
+    uiMaskGO.s:Init( true ) -- true == isUIMask
+    --if Game.fromSplashScreen == true then
         uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
-    end
+    --end
     
     ----------
     -- Icons / Windows
@@ -62,6 +64,7 @@ function Behavior:Awake(s)
         CS.Screen.SetSize(Options.screenSize.x, Options.screenSize.y)
     end )
 end
+
 
 function Behavior:Start()
     self.levelsButtonGO:FireEvent("OnLeftClickReleased", self.levelsButtonGO) -- Select levels window

@@ -13,9 +13,11 @@ function Behavior:Awake( s )
     
     SetRandomColors() -- set new random colors
     
-    Scene.Append("Main/Background")
-
-    local uiMaskGO = Scene.Append("Main/UI Mask")
+    local bg = Scene.Append("Main/Background")
+    bg.s:Init()
+    
+    local uiMaskGO = Scene.Append("Main/Background")
+    uiMaskGO.s:Init(true)
     uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
     Tween.Timer(1, function() uiMaskGO.s:Animate(0,0.5) end) -- now, the mask hides the whole level, wait 0.5sec to fade it out
     
@@ -164,10 +166,7 @@ end
 
 
 function Behavior:Start()    
-    local func = Game.levelToLoad.initFunction 
-    if func ~= nil then
-        func( self )
-    end
+    Daneel.Event.Fire( Game.levelToLoad, "OnStart" )
     
     if Game.levelToLoad.isRandom then
         self.progressbarGO.progressBar.maxValue = Generator.nodesCount
@@ -317,6 +316,8 @@ end
 -- Called when EndLevel event is fired from CheckVictory()
 function Behavior:EndLevel()
     Game.levelEnded = true
+    
+    Daneel.Event.Fire( Game.levelToLoad, "OnComplete" )
     
     -- next level
     if not Game.levelToLoad.isRandom then

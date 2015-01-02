@@ -1,7 +1,7 @@
 
 SoundManager = {
-    musicVolume = 10,
-    soundVolume = 10,
+    musicVolume = 1,
+    soundVolume = 0.8,
 
     categories = {
         select_node = {
@@ -28,18 +28,19 @@ SoundManager = {
     }
 }
 
-for catName, category in pairs( SoundManager.categories ) do
+for categoryName, category in pairs( SoundManager.categories ) do
     category.isPlaying = false
     category.timer = Tween.Timer( 0, function() end, {
         destroyOnComplete = false,
-        destroyOnSceneLoad = false
+        destroyOnSceneLoad = false,
+        isCompleted = true,
     } )
+
     for i=1, #category.sounds do
         local sound = category.sounds[i]
         sound.asset = CS.FindAsset(sound.path, "Sound")
     end
 end
-
 
 
 -- read a sound,
@@ -51,13 +52,12 @@ function SoundManager.Play( category )
     end
     
     local category = SoundManager.categories[ category ]
-    if category.isPlaying == false then
-        
+    if category.timer.isCompleted == true then
         local sound = category.sounds[ math.random( #category.sounds ) ]
-
+        
         sound.asset:Play( SoundManager.soundVolume )
         category.isPlaying = true
         category.timer.duration = sound.duration
-        
+        category.timer:Restart()
     end
 end

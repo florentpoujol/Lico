@@ -1,3 +1,4 @@
+
 function Behavior:Awake()
     self.gameObject.s = self
     self.completedGO = self.gameObject:GetChild("Completed")
@@ -7,9 +8,9 @@ function Behavior:Awake()
     self.bgMaskGO = bgGO.child
 end
 
--- Called from [Levels/BuildLevelGrid]
+-- Called from [Menus/Levels/BuildLevelGrid]
 -- level argument is on entry of the Levels table
-function Behavior:SetData( level )
+function Behavior:Init( level )
     local children = self.gameObject.children
     local levelNameGO = children[1]
     levelNameGO.textRenderer.text = level.name
@@ -27,7 +28,7 @@ function Behavior:SetData( level )
     end
     
     bg.OnLeftClickReleased = function(go)
-        local uiMaskGO = GameObject.Get("UI Mask")
+        local uiMaskGO = GameObject.GetWithTag("uimask")[1]
         uiMaskGO.s:Animate( 1, 0.5, function()
             Game.levelToLoad = level
             Scene.Load("Main/Master Level")
