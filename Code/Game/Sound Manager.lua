@@ -1,8 +1,8 @@
 
 SoundManager = {
     musicVolume = 1,
-    soundVolume = 0.8,
-
+    soundVolume = 0.4,
+    
     categories = {
         select_node = {
             sounds = {
@@ -23,10 +23,14 @@ SoundManager = {
                 { path = "Music/FS 33987__erh__slow-atmosphere-4", duration = 42 },
                 { path = "Music/FS 131979__juskiddink__chimes", duration = 56 },
                 { path = "Music/FS 86277__juskiddink__chimes", duration = 124 },                                
-            }
+            },
+            playedSounds = {}
         }
     }
 }
+
+local musicSoundInstance = nil
+
 
 for categoryName, category in pairs( SoundManager.categories ) do
     category.isPlaying = false
@@ -52,12 +56,81 @@ function SoundManager.Play( category )
     end
     
     local category = SoundManager.categories[ category ]
-    if category.timer.isCompleted == true then
+    
+    if category.soundInstance == nil then
         local sound = category.sounds[ math.random( #category.sounds ) ]
         
+        category.soundInstance = sound.asset:CreateInstance()
+        category.soundInstance:SetLoop(false)
+        category.soundInstance:SetPitch( math.randomrange(-0.8,0.8) )
+        category.soundInstance:Play()
+        
+        category.volumeTweener = Tween.Tweener(SoundManager.soundVolume, 0, 3, {
+            easeType = "outSine",
+            OnUpdate = function(t)
+                category.soundInstance:SetVolume( t.value )
+            end,
+            OnComplete = function()
+                Tween.Timer(1, function()
+                    -- this seems to prevent an exeption
+                    category.soundInstance = nil
+                end)
+            end
+        })
+        
+        --[[
+        --if category.timer.isCompleted == true then
         sound.asset:Play( SoundManager.soundVolume )
-        category.isPlaying = true
+        category.timer.duration = 2
+        category.timer:Restart()
+        ]]
+    end
+end
+
+
+function SoundManager.PlayMusic()
+    if SoundManager.musicVolume <= 0 then
+        return
+    end
+    
+    local category = SoundManager.categories["music"]
+    if #category.sounds == 0 and #category.playedSounds > 0 then
+        -- all music have been played once already
+        category.sounds = category.playedSounds
+    end
+    
+    if musicSoundInstance == nil and math.random(4) == 1 then       
+        local id = math.random( #category.sounds )       
+        local sound = category.sounds[ id ]
+        
+        if #category.sounds ~= #category.playedSounds then
+            -- not all music have been played once yet
+            -- remove the one who will play now
+            -- from the pool of musics
+            table.remove( category.sounds, id )
+            table.insert( category.playedSounds, sound )
+        end
+        
+        musicSoundInstance = sound.asset:CreateInstance()
+        musicSoundInstance:SetLoop(false)
+        --musicSoundInstance:SetPitch( math.randomrange(-0.2,0.2) )
+        musicSoundInstance:Play()
+        
         category.timer.duration = sound.duration
+        --category.timer.duration = 5
+        category.timer.OnComplete = function()
+            musicSoundInstance:Stop()
+            musicSoundInstance = nil
+        end
         category.timer:Restart()
     end
+end
+
+function SoundManager.StopMusic()
+    
+end
+
+
+function Behavior:Update()
+    
 end

@@ -63,6 +63,9 @@ function Behavior:Awake(s)
     Daneel.Event.Listen("OptionsLoaded", function()
         CS.Screen.SetSize(Options.screenSize.x, Options.screenSize.y)
     end )
+    
+    
+    SoundManager.PlayMusic()
 end
 
 

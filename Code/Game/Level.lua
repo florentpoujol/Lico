@@ -7,6 +7,10 @@ local function colorTutorialsOnStart()
         for j=1, #node.s.linksQueue.marks do
             node.s.linksQueue.marks[j].modelRenderer.model = nil
         end
+        
+        if node.s.maxLinkCount == 4 then
+            node.s.maxLinkCount = 2
+        end
     end
     
     -- prevent links to be removed
@@ -18,7 +22,7 @@ local function colorTutorialsOnStart()
 end
 
 
-local function colorTutorialsOnComplete()
+local function colorTutorialsOnEnd()
     local linkScript = Asset("Entities/Link", "Script")
     linkScript.OnClick = linkScript.oOnClick
 end
@@ -29,14 +33,14 @@ Levels = {
         name = "Colors 1",
         scenePath = "Levels/Colors",
         OnStart = colorTutorialsOnStart,
-        OnComplete = colorTutorialsOnComplete
+        OnEnd = colorTutorialsOnEnd
     },
     
     {
         name = "Colors 2",
         scenePath = "Levels/Colors 2",
         OnStart = colorTutorialsOnStart,
-        OnComplete = colorTutorialsOnComplete
+        OnEnd = colorTutorialsOnEnd
     },
     
     {

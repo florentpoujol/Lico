@@ -8,6 +8,9 @@ Game = {
     backgroundNextColorId = 1,
     fromSplashScreen = false, -- true when the main menu s loaded after the splash screen. Set in [Splash Screen], used in [Main Menu].
     
+    nodesBySGridPositions = {}, -- Vector3:ToString() = GameObject   
+    -- value is reset in [Master Level/Awake] before the level content (the nodes) is spawned
+    
     nodesByName = {}, -- set/init in [Master Level/Awake], filled in [Node/Awake], used in [Master Level/ShowHint]
 }
 

@@ -28,12 +28,11 @@ function Behavior:Awake( s )
     
     Game.levelToLoad = Game.levelToLoad or Levels[1]
     local level = Game.levelToLoad -- Game.levelToLoad is set to one entry of the Levels table in a level cartridge OnLeftClickReleased event listener
-    self.levelNameGO = GameObject.Get("Level Name")
-    
+
+    Game.nodesBySGridPositions = {}
     self.levelRoot = Scene.Append( level.scenePath )
     
-    --self.levelRoot.transform.position = Vector3(0)
-    
+    self.levelNameGO = GameObject.Get("Level Name")
     if not level.isRandom then
         self.levelNameGO.textRenderer.text = level.name
         self:ReparentNodes()
@@ -70,6 +69,8 @@ function Behavior:Awake( s )
     self.menuIconGO = menuIconGO -- used in EndLevel()
     
     menuIconGO:AddEventListener( "OnLeftClickReleased", function(go)
+        Daneel.Event.Fire( Game.levelToLoad, "OnEnd" )
+        
         uiMaskGO.s:Animate(1,0.5, function()
             Scene.Load("Main/Main Menu")
         end )
@@ -162,6 +163,8 @@ function Behavior:Awake( s )
         self:UpdateLevelCamera() 
     end
     -- when random level, is done from Generator.randomLevel.initFunction()
+    
+    SoundManager.PlayMusic()
 end
 
 
@@ -210,6 +213,7 @@ local coroutineCooldown = maxCooldown
 -- note: the lag still happens when there is a lot of nodes
 
 local mazeDebugCooldown = 0
+local linksDebugCooldown = 0
 
 function Behavior:Update()
     if Game.levelEnded == true then
@@ -246,6 +250,17 @@ function Behavior:Update()
         end]]
     end
     
+    
+    linksDebugCooldown = linksDebugCooldown - 1
+    if CS.Input.WasButtonJustPressed( "F2" ) then
+        if linksDebugCooldown > 0 then
+            local nodes = GameObject.GetWithTag("node")
+            for i=1, #nodes do
+                nodes[i].s:DebugLinkableNodes( not nodes[i].s.debugLinkableNodes )
+            end            
+        end
+        linksDebugCooldown = 20
+    end
     
     mazeDebugCooldown = mazeDebugCooldown - 1
     if CS.Input.WasButtonJustPressed( "F3" ) then
@@ -317,7 +332,7 @@ end
 function Behavior:EndLevel()
     Game.levelEnded = true
     
-    Daneel.Event.Fire( Game.levelToLoad, "OnComplete" )
+    Daneel.Event.Fire( Game.levelToLoad, "OnEnd" )
     
     -- next level
     if not Game.levelToLoad.isRandom then

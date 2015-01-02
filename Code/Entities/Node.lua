@@ -3,9 +3,6 @@ colorName string ""
 maxLinkCount number 4
 /PublicProperties]]
 
-
-local nodesBySGridPositions = {} -- Vector3:ToString() = GameObject
-
 function Behavior:Awake(s)
     if s ~= true then
         self:Awake(true)
@@ -45,6 +42,9 @@ function Behavior:Awake(s)
     self.isSelected = false  
 
     self.linkableNodes = {}
+    self.debugLinkableNodes = false
+    self.debugLinkableNodesGO = self.gameObject:GetChild("DebugLinkableNodes")
+    
     self.gridPosition = Vector2(0)
     
     self.nodeGOs = {} -- nodes this node is connected to -- filled in Link()
@@ -167,10 +167,28 @@ function Behavior:Init( colorName )
                 break
             end
 
-            local otherNode = nodesBySGridPositions[ gridPositionToTest:ToString() ]
+            local otherNode = Game.nodesBySGridPositions[ gridPositionToTest:ToString() ] -- Game.nodesBySGridPosition is reset in [Master Level/Awake]
             if otherNode ~= nil then
                 table.insert( self.linkableNodes, otherNode )
                 table.insert( otherNode.s.linkableNodes, self.gameObject )
+                
+                -- debug
+                local params = {
+                    parent = self.debugLinkableNodesGO,
+                    transform = {
+                        localPosition = Vector3(0),
+                        localScale = Vector3(0.1,0.1,1.5)
+                    },
+                    modelRenderer = { model = "Debug/White Bar" }
+                }
+                
+                local debugGO = GameObject.New("", params)
+                debugGO.transform:LookAt( otherNode.transform.position )
+                
+                params.parent = otherNode
+                debugGO = GameObject.New("", params)
+                debugGO.transform:LookAt( self.gameObject.transform.position )
+                
                 break
             else
                 gridOffset = gridOffset + gridOffsets[ xOrY ]
@@ -178,10 +196,25 @@ function Behavior:Init( colorName )
         end
     end
     
-    nodesBySGridPositions[ self.gridPosition:ToString() ] = self.gameObject
+    self:DebugLinkableNodes(false)
+    Game.nodesBySGridPositions[ self.gridPosition:ToString() ] = self.gameObject
     
-    --
     self.isInit = true
+end
+
+
+-- Called from [Master Level/Update]
+function Behavior:DebugLinkableNodes( show )
+    if show == nil then
+        show = true
+    end
+    self.debugLinkableNodes = show
+    
+    if show == true then
+        self.debugLinkableNodesGO.transform.localScale = Vector3(1)
+    else
+        self.debugLinkableNodesGO.transform.localScale = Vector3(0.01)
+    end
 end
 
 
@@ -354,8 +387,9 @@ function Behavior:EndLevel()
     if self.numberGO ~= nil then
         self.numberGO.textRenderer.opacity = 0
     end
-    
-    nodesBySGridPositions = {}
 end
+
+
+
 
 Daneel.Debug.RegisterScript(Behavior)
