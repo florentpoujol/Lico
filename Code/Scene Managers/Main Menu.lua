@@ -10,10 +10,7 @@ function Behavior:Awake(s)
     
     local uiMaskGO = Scene.Append("Main/Background")
     uiMaskGO.s:Init( true ) -- true == isUIMask
-    --if Game.fromSplashScreen == true then
-        uiMaskGO.s:Animate(1,0) -- makes the mask hide everything
-    --end
-    
+            
     ----------
     -- Icons / Windows
     

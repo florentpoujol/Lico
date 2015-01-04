@@ -68,7 +68,14 @@ function Behavior:Init( isUIMask )
     end
     
     --
-    self.camera = self.gameObject.parent.parent.camera
+    self.camera = nil
+    local parent = self.gameObject.parent
+    if parent.camera ~= nil then -- happens in the splash screen
+        self.camera = parent.camera
+    else
+        self.camera = parent.parent.camera
+    end
+    
     self:Resize()
     Daneel.Event.Listen( "OnScreenResized", function() self:Resize() end )
 end

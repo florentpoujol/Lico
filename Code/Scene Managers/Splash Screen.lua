@@ -5,62 +5,90 @@ function Behavior:Awake(s)
         return
     end
     
-    Scene.Append("Main/Background")
-    self.uiMaskGO = Scene.Append("Main/UI Mask")
+    local bg = Scene.Append("Main/Background")
+    bg.s:Init()
     
-    --
+    self.uiMaskGO = Scene.Append("Main/Background")
+    self.uiMaskGO.s:Init(true)
+    self.uiMaskGO.s:Animate(0,0)    
+    
     local iconRndr = GameObject.Get("Credits.Icon.Renderer")
-    local window = GameObject.Get("Credits.Window")
-    iconRndr:InitWindow(window, "mouseclick")
+    iconRndr:InitWindow("Credits.Window", "mouseclick")
     InitIcons(iconRndr.parent)
     
     
     ----------
-    -- start nodes
-    local startGO = GameObject.Get("Start")
+    -- Game title
     
-    self.startNodeGO = startGO:GetChild("Start Node")
-    self.middleNodeGOs = startGO:GetChild("Middle Nodes").children
-    self.endNodeGO = startGO:GetChild("End Node")
+    Game.isOnSplashScreen = true
+    GameObject.Get("Game Title Parent"):Append("Entities/Game Title")
     
-    -- set color
-    local colorId = math.random(6)
-    self.startNodeGO.modelRenderer.color = ColorsByName[ ColorList[ colorId ] ]
-        
-    self.middleNodeGOs[1].modelRenderer.color = ColorsByName[ ColorList[ colorId ] ]
-    self.middleNodeGOs[1]:Display(false)
-    
-    if colorId == 6 then
-        colorId = 1
-    else
-        colorId = colorId + 1
+    -- hide the node marks
+    local nodeGOs = GameObject.GetWithTag("node")
+    for i=1, #nodeGOs do
+        nodeGOs[i].s:HideLinkMarks()
     end
     
-    self.middleNodeGOs[2].modelRenderer.color = ColorsByName[ ColorList[ colorId ] ]
-    self.middleNodeGOs[2]:Display(false) -- this one has an opacity < 1, use Display(false) to save whatever value the opacity set to
+    --
+    local nodeGOs = {}
+    local nodesParent = GameObject.Get("Nodes")
+    table.mergein( nodeGOs, nodesParent:GetChild("L").children )
+    table.mergein( nodeGOs, nodesParent:GetChild("I").children )
+    table.mergein( nodeGOs, nodesParent:GetChild("C").children )
+    table.mergein( nodeGOs, nodesParent:GetChild("O").children )
+    
+    for i=1, #nodeGOs do
+        local node = nodeGOs[i]
+        node.s.rendererGO:RemoveTag()
+        local name = node.name
         
-    self.endNodeGO.modelRenderer.color = ColorsByName[ ColorList[ colorId ] ]
-    
-    -- mouse input
-    self.startNodeGO:AddTag("ui")
-    self.startNodeGO.OnMouseEnter = function()
-        self.startNodeGO.isSelected = true
-    end
-    
-    self.endNodeGO:AddTag("ui")
-    self.endNodeGO.OnMouseEnter = function()
-        if self.startNodeGO.isSelected == true and not self.endNodeGO.isSelected then
-            self.endNodeGO.isSelected = true
-            
-            self.middleNodeGOs[1]:Display()
-            self.middleNodeGOs[2]:Display()
-            
-            self:GoToMainMenu(1)
+        
+        if name == "C1" then
+            node.s:LinkTo( nodeGOs[i+1] )
+            node.s:LinkTo( nodeGOs[i+4] )
+        elseif name == "O6" then
+            node.s:LinkTo( nodeGOs[i-5] )
+        elseif name ~= "C4" and name ~= "L4" and name ~= "I1" and name ~= "C5" then
+            node.s:LinkTo( nodeGOs[i+1] )
         end
     end
-        
+    
+    
     ----------
-    -- cursor    
+    -- start nodes
+    
+    local startGO = GameObject.Get("Start")
+    startGO:Append("Entities/Start Game")
+    
+    startGO = startGO.child -- "Start Game" game object
+    local children = startGO.children
+    self.startNodeGO = children[2]
+    self.endNodeGO = children[3]
+    
+    self.startNodeGO.transform.localScale = Vector3(1.5,1,1.5)
+    self.endNodeGO.transform.localScale = Vector3(1.5,1,1.5)
+    
+    self.startNodeGO.s:HideLinkMarks()
+    self.endNodeGO.s:HideLinkMarks()
+    
+    local function onNewLink(link, targetNode)
+        local scale = Vector3(1)
+        link.transform.localScale = Vector3(1,1,0)
+        link:Animate("localScale", scale, 0.4, { 
+            easeType = "inExpo",
+            OnComplete = function()
+                
+            end
+        })
+    end
+    
+    self.startNodeGO.OnNewLink = onNewLink
+    self.endNodeGO.OnNewLink = onNewLink
+ 
+       
+    ----------
+    -- cursor
+      
     self.cursorGO = startGO:GetChild("Cursor")
     self.cursorGO.modelRenderer.opacity = 0
     
@@ -83,48 +111,16 @@ function Behavior:Awake(s)
     end
     
     Tween.Timer(2, self.cursorGO.animation)
-
+    
+    
+    
 end
 
 
-function Behavior:Start()
-    -- hide the node marks
-    local nodeGOs = GameObject.GetWithTag("node")
-    for i=1, #nodeGOs do
-        local node = nodeGOs[i]
-        
-        for j =1, #node.s.linksQueue.marks do
-            node.s.linksQueue.marks[j].modelRenderer.model = nil
-        end
-    end
+function Behavior:GoToMainMenu( maskDuration )
+    Game.isOnSplashScreen = false
     
-    --
-    local nodeGOs = {}
-    local nodesParent = GameObject.Get("Nodes")
-    table.mergein( nodeGOs, nodesParent:GetChild("L", true).children )
-    table.mergein( nodeGOs, nodesParent:GetChild("I", true).children )
-    table.mergein( nodeGOs, nodesParent:GetChild("C", true).children )
-    table.mergein( nodeGOs, nodesParent:GetChild("O", true).children )
-    
-    for i=1, #nodeGOs do
-        local node = nodeGOs[i]
-        local name = node.name
-        
-        if name == "C1" then
-            node.s:Link( nodeGOs[i+1] )
-            node.s:Link( nodeGOs[i+4] )
-        elseif name == "O6" then
-            node.s:Link( nodeGOs[i-5] )
-        elseif name ~= "C4" and name ~= "L4" and name ~= "I1" and name ~= "C5" then
-            node.s:Link( nodeGOs[i+1] )
-        end
-    end
-end
-
-
-function Behavior:GoToMainMenu( duration )
-    self.uiMaskGO.s:Animate(1, duration or 0.5, function()
-        Game.fromSplashScreen = true
+    self.uiMaskGO.s:Animate(1, maskDuration or 0.5, function()    
         Scene.Load("Main/Main Menu")
     end )
 end

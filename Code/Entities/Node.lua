@@ -19,7 +19,7 @@ function Behavior:Awake(s)
         Game.nodesByName[ name ] = realNode -- for hints ([Master Level/Show Hint]
         realNode.name = name
         
-        realNode.s.gridPosition = self.gameObject.gridPosition -- set by the [Node Position Finder] script
+        realNode.s.gridPosition = self.gameObject.gridPosition or Vector2(0) -- self.gameObject.gridPosition is set by [Node Position Finder]
         
         realNode.s:SetMaxLinkCount( self.maxLinkCount )
         if self.colorName == "" and self.gameObject.modelRenderer ~= nil then
@@ -114,7 +114,7 @@ function Behavior:Init( colorName )
     
     local numberGO = self.gameObject:GetChild("Color Blind")
     
-    if Options.colorBlindModeActive == true then
+    if Options.colorBlindModeActive == true and Game.isOnSplashScreen == false then
         self.numberGO = numberGO
         numberGO.textRenderer.text = NumbersByColorName[ colorName ]
         rendererGO.child.modelRenderer.opacity = 0.5
@@ -127,19 +127,19 @@ function Behavior:Init( colorName )
     -- Link Queue
     -- The Link Queue chldren must be ordered from 4 (top) to 1 (bootom)
     
-    self.linksQueue = self.gameObject:GetChild("Links Queue")
-    local marks = self.linksQueue.children
-    self.linksQueue.marks = {}
+    self.linkMarksParent = self.gameObject:GetChild("Link Marks")
+    local markGOs = self.linkMarksParent.children
+    self.linkMarkGOs = {}
         
-    for i=1, #marks do -- loop on children from 1 to 6
-        local go = marks[i]
+    for i=1, #markGOs do -- loop on children from 1 to 4
+        local go = markGOs[i]
         if i <= self.maxLinkCount then
-            table.insert( self.linksQueue.marks, go )
+            table.insert( self.linkMarkGOs, go )
         else
             go:Destroy()
         end
     end
-    self.linksQueue.marks = table.reverse( self.linksQueue.marks )
+    self.linkMarkGOs = table.reverse( self.linkMarkGOs )
     
     ----------
     -- pillar
@@ -150,54 +150,60 @@ function Behavior:Init( colorName )
     ----------
     -- get linkable nodes
     
-    local gridOffsets = { x = Vector2(-1,0), y = Vector2(0,-1) }
-    
-    local gridSize = Game.levelToLoad.gridSize or Vector2(1,1)
-    if Game.levelToLoad.isRandom == true then
-        gridSize = Generator.gridSize
-    end
-    local maxNodeCount = math.max( self.gridPosition.x, self.gridPosition.y )
-
-    for xOrY, gridOffset in pairs( gridOffsets ) do
-        for i=1, self.gridPosition[ xOrY ] do -- limits the number of iteration
-                
-            local gridPositionToTest = self.gridPosition + gridOffset
-            if gridPositionToTest[ xOrY ] < 1 then
-                -- outside the grid
-                break
-            end
-
-            local otherNode = Game.nodesBySGridPositions[ gridPositionToTest:ToString() ] -- Game.nodesBySGridPosition is reset in [Master Level/Awake]
-            if otherNode ~= nil then
-                table.insert( self.linkableNodes, otherNode )
-                table.insert( otherNode.s.linkableNodes, self.gameObject )
-                
-                -- debug
-                local params = {
-                    parent = self.debugLinkableNodesGO,
-                    transform = {
-                        localPosition = Vector3(0),
-                        localScale = Vector3(0.1,0.1,1.5)
-                    },
-                    modelRenderer = { model = "Debug/White Bar" }
-                }
-                
-                local debugGO = GameObject.New("", params)
-                debugGO.transform:LookAt( otherNode.transform.position )
-                
-                params.parent = otherNode
-                debugGO = GameObject.New("", params)
-                debugGO.transform:LookAt( self.gameObject.transform.position )
-                
-                break
-            else
-                gridOffset = gridOffset + gridOffsets[ xOrY ]
+    if Game.isOnSplashScreen == false then
+        local gridOffsets = { x = Vector2(-1,0), y = Vector2(0,-1) }
+        
+        local gridSize = Vector2(1,1)
+        if Game.levelToLoad ~= nil then
+            gridSize = Game.levelToLoad.gridSize
+            if Game.levelToLoad.isRandom == true then
+                gridSize = Generator.gridSize
             end
         end
-    end
+        
+        local maxNodeCount = math.max( self.gridPosition.x, self.gridPosition.y )
     
-    self:DebugLinkableNodes(false)
-    Game.nodesBySGridPositions[ self.gridPosition:ToString() ] = self.gameObject
+        for xOrY, gridOffset in pairs( gridOffsets ) do
+            for i=1, self.gridPosition[ xOrY ] do -- limits the number of iteration
+                    
+                local gridPositionToTest = self.gridPosition + gridOffset
+                if gridPositionToTest[ xOrY ] < 1 then
+                    -- outside the grid
+                    break
+                end
+    
+                local otherNode = Game.nodesBySGridPositions[ gridPositionToTest:ToString() ] -- Game.nodesBySGridPosition is reset in [Master Level/Awake]
+                if otherNode ~= nil then
+                    table.insert( self.linkableNodes, otherNode )
+                    table.insert( otherNode.s.linkableNodes, self.gameObject )
+                    
+                    -- debug
+                    local params = {
+                        parent = self.debugLinkableNodesGO,
+                        transform = {
+                            localPosition = Vector3(0),
+                            localScale = Vector3(0.1,0.1,1.5)
+                        },
+                        modelRenderer = { model = "Debug/White Bar" }
+                    }
+                    
+                    local debugGO = GameObject.New("", params)
+                    debugGO.transform:LookAt( otherNode.transform.position )
+                    
+                    params.parent = otherNode
+                    debugGO = GameObject.New("", params)
+                    debugGO.transform:LookAt( self.gameObject.transform.position )
+                    
+                    break
+                else
+                    gridOffset = gridOffset + gridOffsets[ xOrY ]
+                end
+            end
+        end
+        
+        self:DebugLinkableNodes(false)
+        Game.nodesBySGridPositions[ self.gridPosition:ToString() ] = self.gameObject
+    end
     
     self.isInit = true
 end
@@ -221,10 +227,11 @@ end
 -- Called when left click or mouse hover the node's renderer.
 -- See in Init() above.
 function Behavior:OnMouseEnter()
+print("mouse enter", self.isSelected, Game.levelEnded)
      if self.isSelected == true or Game.levelEnded == true then -- click when mouse over and already selected
         return
     end
-     
+     print("select1")
     local selectedNode = GameObject.GetWithTag("selected_node")[1]
     if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one        
         if
@@ -243,6 +250,7 @@ function Behavior:OnMouseEnter()
     -- the link is created and the level completed/ended
     -- before the node is actually selected
     if Game.levelEnded == false then
+    print("select2")
         self:Select(true)
     end
 end
@@ -262,7 +270,7 @@ function Behavior:Select( select )
     elseif select == self.isSelected then
         return
     end
-    
+    print("select", self.gameObject.name, select)
     if select == true then
         -- prevent the node to be selected if it has no more link to make
         if #self.nodeGOs >= self.maxLinkCount then
@@ -335,16 +343,18 @@ function Behavior:RegisterLink( linkGO, nodeGO, remove )
     func( self.nodeGOs, nodeGO )
     func( self.linkGOs, linkGO )
     
-    self:UpdateLinkQueue()
+    self:UpdateLinkMarks()
 end
 
 
--- Called from Link() and [Link/OnClick()]
-function Behavior:UpdateLinkQueue( nodeLinkCount )
+-- Called from LinkTo()
+function Behavior:UpdateLinkMarks( nodeLinkCount )
     nodeLinkCount = nodeLinkCount or #self.nodeGOs
-    local marks = self.linksQueue.marks
+    local markGOs = self.linkMarkGOs
 
-    for i, go in ipairs( marks ) do 
+    for i=1, #markGOs do
+        local go = markGOs[i]
+        
         -- loop on the existing marks in rfrom biggest num to 1
         if i <= nodeLinkCount then
             -- hide the link
@@ -373,13 +383,26 @@ function Behavior:UpdateLinkQueue( nodeLinkCount )
 end
 
 
+-- Called from EndLevel() below, some level init functions and [Splash Screen/Start
+function Behavior:HideLinkMarks()
+    if self.linkMarksParent ~= nil then
+        self.linkMarksParent:Destroy()
+        self.linkMarksParent = nil
+        self.linkMarkGOs = {}
+    end
+end
+
+
 -- Called on all nodes when EndLevel event is fired from one node's CheckVictory()
 function Behavior:EndLevel()
     -- prevent nodes to be selected
     self.rendererGO:RemoveTag()
     self:Select(false)
     
-    self:UpdateLinkQueue(99) -- do as if the node had 4 links, hidding all the link marks
+    self:UpdateLinkMarks(99)
+    --Tween.Timer(1, function()
+        --self:HideLinkMarks()
+    --end)
 
     self.pillarGO:Destroy()
     
@@ -388,8 +411,5 @@ function Behavior:EndLevel()
         self.numberGO.textRenderer.opacity = 0
     end
 end
-
-
-
 
 Daneel.Debug.RegisterScript(Behavior)

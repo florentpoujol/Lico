@@ -1,12 +1,17 @@
 
+local function hideLinkMarks()
+    local nodeGOs = GameObject.GetWithTag("node")
+    for i=1, #nodeGOs do
+        nodeGOs[i].s:HideLinkMarks()
+    end
+end
+
 local function colorTutorialsOnStart()
-    -- hide the node marks
+    -- hide the link marks
     local nodeGOs = GameObject.GetWithTag("node")
     for i=1, #nodeGOs do
         local node = nodeGOs[i]
-        for j=1, #node.s.linksQueue.marks do
-            node.s.linksQueue.marks[j].modelRenderer.model = nil
-        end
+        node.s:HideLinkMarks()
         
         if node.s.maxLinkCount == 4 then
             node.s.maxLinkCount = 2

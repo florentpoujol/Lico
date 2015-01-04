@@ -1,6 +1,6 @@
 
 SoundManager = {
-    musicVolume = 1,
+    musicVolume = 0.5,
     soundVolume = 0.4,
     
     categories = {
@@ -113,6 +113,7 @@ function SoundManager.PlayMusic()
         
         musicSoundInstance = sound.asset:CreateInstance()
         musicSoundInstance:SetLoop(false)
+        musicSoundInstance:SetVolume( SoundManager.musicVolume )
         --musicSoundInstance:SetPitch( math.randomrange(-0.2,0.2) )
         musicSoundInstance:Play()
         

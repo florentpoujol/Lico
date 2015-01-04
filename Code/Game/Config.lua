@@ -3,10 +3,14 @@ CS.Screen.SetSize(900, 506) -- 1.78 = 16:9   840x470
 Screen.lastScreenSize = CS.Screen.GetSize()
 
 Game = {
+    isOnSplashScreen = false, -- set to true [Splash Screen/Awake], set to false [Splash Screen/GoToMainMenu], used in [Node/Init]
+    
     levelToLoad = nil, -- set in [Level Cartridge/SetData levelNameGO OnClick event]
+    levelEnded = false,
+    
     deletedLinkCount = 0, -- updated in [Connection/OnClick], used in [Level Master/EndLevel]
     backgroundNextColorId = 1,
-    fromSplashScreen = false, -- true when the main menu s loaded after the splash screen. Set in [Splash Screen], used in [Main Menu].
+    fromSplashScreen = false, -- true when the main menu is loaded after the splash screen. Set in [Splash Screen], used in [Main Menu].
     
     nodesBySGridPositions = {}, -- Vector3:ToString() = GameObject   
     -- value is reset in [Master Level/Awake] before the level content (the nodes) is spawned

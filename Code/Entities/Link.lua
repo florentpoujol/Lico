@@ -27,7 +27,7 @@ function Behavior:Awake(s)
 end
 
 
--- Called from [Node/Link] after the link has been spawned
+-- Called from [Node/LinkTo] after the link has been spawned
 function Behavior:Init( node, targetNode )   
     self.gameObject.parent = node
     self.gameObject.transform.localPosition = Vector3(0)
@@ -38,7 +38,6 @@ function Behavior:Init( node, targetNode )
     
     local direction = targetNodePosition - nodePosition
     local linkLength = direction:GetLength() -- not always == 2 ! (can be 2, 4, 6, 8, ...)
-    
     self.gameObject.transform:LookAt( targetNodePosition )
     self.gameObject.transform:MoveOriented( Vector3(0,0, -0.5 ) )
     
@@ -49,19 +48,23 @@ function Behavior:Init( node, targetNode )
     
     -- scale
     local scale = Vector3(1,1, linkLength - 1 + 0.02 ) -- make it slighly longer than the gap between the nodes
-    self.gameObject:Animate("localScale", scale, 0.4, { 
-        easeType = "inExpo",
-        OnComplete = function()
-            if Game.levelEnded == false then
-                MasterLevel:CheckVictory()
+    if Game.isOnSplashScreen == false then
+        self.gameObject:Animate("localScale", scale, 0.4, { 
+            easeType = "inExpo",
+            OnComplete = function()
+                if Game.levelEnded == false then
+                    MasterLevel:CheckVictory()
+                end
             end
-        end
-    })   
+        })
+    else
+        self.gameObject.transform.localScale = scale
+    end
     
     -- color
     local color = node.s.color
     local endColor = targetNode.s.color
-    
+
     self.sourceColorGO.modelRenderer.color = color
     
     if color == endColor then
@@ -71,6 +74,8 @@ function Behavior:Init( node, targetNode )
     end
     
     self.nodeGOs = { node, targetNode }
+    
+    node:FireEvent("OnNewLink", self.gameObject, targetNode)
 end
 
 

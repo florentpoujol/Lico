@@ -8,7 +8,7 @@ function Behavior:Start()
     local onFocus = function(input)
         if input.isFocused then
             --input.backgroundGO:Display(0.5)
-            input.backgroundGO.modelRenderer.model = "Cubes/Gray 100"
+            input.backgroundGO.modelRenderer.model = "Cubes/Grey 100"
             self.focusedInputId = table.getkey( self.inputs, input )
         else
             --input.backgroundGO:Display(1)
@@ -46,7 +46,7 @@ function Behavior:Start()
         go.backgroundGO = go.child
         go.backgroundGO:AddComponent("Toggle", {
             group = "random_difficulty",
-            checkedModel = "Cubes/Gray 100",
+            checkedModel = "Cubes/Grey 100",
             uncheckedModel = "Cubes/Black",
             difficulty = i,
             OnUpdate = function(t)
