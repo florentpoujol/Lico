@@ -33,6 +33,7 @@ fontAwesome.textByIconName = {
     checkbox_not_checked = "6",
     checkbox_checked = "7",
     question_mark = "8",
+    question_mark = "9",
 }
 
 function Behavior:Awake()

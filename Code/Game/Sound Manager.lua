@@ -1,8 +1,5 @@
 
-SoundManager = {
-    musicVolume = 0.5,
-    soundVolume = 0.4,
-    
+SoundManager = { 
     categories = {
         select_node = {
             sounds = {
@@ -51,7 +48,7 @@ end
 -- do not read a sound of the same category until a certain time has passed
 
 function SoundManager.Play( category )
-    if SoundManager.soundVolume <= 0 then
+    if Options.soundVolume <= 0 then
         return
     end
     
@@ -65,7 +62,7 @@ function SoundManager.Play( category )
         category.soundInstance:SetPitch( math.randomrange(-0.8,0.8) )
         category.soundInstance:Play()
         
-        category.volumeTweener = Tween.Tweener(SoundManager.soundVolume, 0, 3, {
+        category.volumeTweener = Tween.Tweener(Options.soundVolume, 0, 3, {
             easeType = "outSine",
             OnUpdate = function(t)
                 category.soundInstance:SetVolume( t.value )
@@ -80,7 +77,7 @@ function SoundManager.Play( category )
         
         --[[
         --if category.timer.isCompleted == true then
-        sound.asset:Play( SoundManager.soundVolume )
+        sound.asset:Play( Options.soundVolume )
         category.timer.duration = 2
         category.timer:Restart()
         ]]
@@ -89,7 +86,7 @@ end
 
 
 function SoundManager.PlayMusic()
-    if SoundManager.musicVolume <= 0 then
+    if Options.musicVolume <= 0 then
         return
     end
     
@@ -113,7 +110,7 @@ function SoundManager.PlayMusic()
         
         musicSoundInstance = sound.asset:CreateInstance()
         musicSoundInstance:SetLoop(false)
-        musicSoundInstance:SetVolume( SoundManager.musicVolume )
+        musicSoundInstance:SetVolume( Options.musicVolume )
         --musicSoundInstance:SetPitch( math.randomrange(-0.2,0.2) )
         musicSoundInstance:Play()
         

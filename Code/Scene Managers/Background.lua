@@ -12,7 +12,6 @@ function Behavior:Awake()
     self.gameObject.s = self
 end
 
-
 function Behavior:Init( isUIMask )
     self.rendererGO = self.gameObject:GetChild("Renderer")    
     self.maskGO = self.rendererGO:GetChild("Mask")
@@ -25,6 +24,10 @@ function Behavior:Init( isUIMask )
         self.gameObject.parent = GameObject.Get("UI Mask Parent")
         self.gameObject.transform.localPosition = Vector3(0,0,-1)
         self.gameObject:AddTag("uimask") -- used by level cartridge
+        
+        self.maskGO.modelRenderer.opacity = 0
+        self.frontGO.modelRenderer.opacity = 0
+        self.backGO.modelRenderer.opacity = 0
         
         --self.motifGO:Destroy()
         self.motifGO = nil

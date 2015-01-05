@@ -227,11 +227,10 @@ end
 -- Called when left click or mouse hover the node's renderer.
 -- See in Init() above.
 function Behavior:OnMouseEnter()
-print("mouse enter", self.isSelected, Game.levelEnded)
      if self.isSelected == true or Game.levelEnded == true then -- click when mouse over and already selected
         return
     end
-     print("select1")
+    
     local selectedNode = GameObject.GetWithTag("selected_node")[1]
     if selectedNode ~= nil and selectedNode ~= self.gameObject then -- there is a selected node and it's not this one        
         if
@@ -250,7 +249,6 @@ print("mouse enter", self.isSelected, Game.levelEnded)
     -- the link is created and the level completed/ended
     -- before the node is actually selected
     if Game.levelEnded == false then
-    print("select2")
         self:Select(true)
     end
 end
@@ -270,7 +268,7 @@ function Behavior:Select( select )
     elseif select == self.isSelected then
         return
     end
-    print("select", self.gameObject.name, select)
+
     if select == true then
         -- prevent the node to be selected if it has no more link to make
         if #self.nodeGOs >= self.maxLinkCount then
@@ -286,7 +284,9 @@ function Behavior:Select( select )
         end
         self.gameObject:AddTag("selected_node")
         
-        SoundManager.Play("select_node")
+        if Game.isOnSplashScreen == false then
+            SoundManager.Play("select_node")
+        end
     else
 
         self.pillarGO:Animate("opacity", 0.05, 0.5)

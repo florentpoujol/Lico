@@ -25,7 +25,10 @@ Options = {
     screenSize = CS.Screen.GetSize(),
     uiSize = 6,
     colorBlindModeActive = false,
-} -- filled by LoadOptions() in [Options]
+    
+    musicVolume = 0.5,
+    soundVolume = 0.5,
+} -- filled by LoadOptions() in [Menus/Options]
 
 
 AllowedConnectionsByColor = {

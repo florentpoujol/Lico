@@ -10,7 +10,7 @@ function Behavior:Awake(s)
     
     local uiMaskGO = Scene.Append("Main/Background")
     uiMaskGO.s:Init( true ) -- true == isUIMask
-            
+    
     ----------
     -- Icons / Windows
     
@@ -56,9 +56,10 @@ function Behavior:Awake(s)
     InitIcons() -- setup everythings so that the icons react to the mouse and show the desired window
 
     --
-    Daneel.Event.Listen("OnScreenResized", SaveOptions, true ) -- save the new resolution/ui size, whenever the resolution/ui size are modified 
+
     Daneel.Event.Listen("OptionsLoaded", function()
         CS.Screen.SetSize(Options.screenSize.x, Options.screenSize.y)
+        SoundManager.PlayMusic()
     end )
     
     

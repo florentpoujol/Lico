@@ -75,7 +75,7 @@ function Behavior:Init( node, targetNode )
     
     self.nodeGOs = { node, targetNode }
     
-    node:FireEvent("OnNewLink", self.gameObject, targetNode)
+    node:FireEvent("OnNewLink", self.gameObject)
 end
 
 

@@ -1,5 +1,5 @@
 function Behavior:Awake()
-    self.gameObject.camera:Destroy() -- removes placeholder
+    self.gameObject.parent.camera:Destroy() -- removes placeholder
     
     ----------
     -- UI Size
@@ -33,29 +33,90 @@ function Behavior:Awake()
     ----------
     -- ColorBlind mode
     
-    local infoIconGO = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
-    infoIconGO:InitWindow("Color Blind Mode.Info Window", "mouseclick")
-    -- do not put that code in Start because InitWindow would be called after InitIcons() (in [Main Menu]) and overwrite onLeftClickReleased()
-end
+    local go = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
+    go:InitWindow("Color Blind Mode.Info Window", "mouseclick")   
 
-
-function Behavior:Start()
-    -- ColorBlind mode
     local checkboxGO = GameObject.Get("Color Blind Mode.Checkbox")
     checkboxGO.toggle.OnUpdate = function(toggle)
         Options.colorBlindModeActive = toggle.isChecked
         SaveOptions()
+        
+        if toggle.isChecked == true then
+            --toggle.gameObject.modelRenderer.color = Color(0,200,55)
+        else
+            --toggle.gameObject.modelRenderer.color = Color(255,0,50)
+        end
     end
     self.colorBlindToggle = checkboxGO.toggle -- used in UpdateMenu()
     
-    --
-    Daneel.Event.Listen("OptionsLoaded", function() self:UpdateMenu() end )    
+        
+    ----------    
+    -- sound and music
+    local onUpdate = function(t)
+        if t.isChecked == true then
+            Options[ t.volumeProperty ] = t.volume
+            SaveOptions()
+        end
+    end
+    
+    self.musicGOs = GameObject.Get("Music Volume.Radios").children
+    for i=1, #self.musicGOs do
+        local toggle = self.musicGOs[i].toggle
+        toggle.volumeProperty = "musicVolume"
+        toggle.volume = tonumber( toggle.gameObject.name ) / 10
+        if toggle.volume == Options.musicVolume then
+            toggle:Check(true)
+        end
+        toggle.OnUpdate = onUpdate
+    end
+    
+    self.soundGOs = GameObject.Get("Sound Volume.Radios").children
+    for i=1, #self.soundGOs do
+        local toggle = self.soundGOs[i].toggle
+        toggle.volumeProperty = "soundVolume"
+        toggle.volume = tonumber( toggle.gameObject.name ) / 10
+        if toggle.volume == Options.soundVolume then
+            toggle:Check(true)
+        end
+        toggle.OnUpdate = onUpdate
+    end
+    
+    
+    ---------
+    
+    Daneel.Event.Listen("OptionsLoaded", function() 
+        self:UpdateMenu() 
+        Daneel.Event.Listen("OnScreenResized", SaveOptions) -- save the new resolution/ui size, whenever the resolution/ui size are modified 
+    end )
+    
     LoadOptions() -- fire "OptionsLoaded" event
-    -- should be done as early as possible
 end
 
 
-function LoadOptions()
+-- Called wen the "OptionsLoaded" event is fired from LoadOptions()
+function Behavior:UpdateMenu()
+    UpdateUISize()
+    self.uiSizeValueGO.textRenderer.text = Options.uiSize
+    
+    self.colorBlindToggle:Check( Options.colorBlindModeActive )
+    
+    for i=1, #self.musicGOs do
+        local toggle = self.musicGOs[i].toggle
+        if toggle.volume == Options.musicVolume then
+            toggle:Check(true)
+        end
+    end
+    
+    for i=1, #self.soundGOs do
+        local toggle = self.soundGOs[i].toggle
+        if toggle.volume == Options.soundVolume then
+            toggle:Check(true)
+        end
+    end
+end
+
+
+function LoadOptions( callback )
     CS.Storage.Load("Options", function(e, data)
         if e ~= nil then
             print("ERROR loading options from storage: ", e.message)
@@ -78,14 +139,6 @@ function SaveOptions()
             print("ERROR saving options in storage: ", e.message)
         end
     end )
-end
-
-
-function Behavior:UpdateMenu()
-    UpdateUISize()
-    self.uiSizeValueGO.textRenderer.text = Options.uiSize
-    
-    self.colorBlindToggle:Check( Options.colorBlindModeActive )
 end
 
 

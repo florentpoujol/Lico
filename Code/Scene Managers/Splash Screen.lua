@@ -17,6 +17,24 @@ function Behavior:Awake(s)
     InitIcons(iconRndr.parent)
     
     
+    -----------
+    --[[
+    local p = CS.CreateGameObject("P")
+    local c1 =  CS.CreateGameObject("C1", p)
+    local c2 = CS.CreateGameObject("C2", p)
+    
+    for i, child in ipairs(p:GetChildren()) do
+        print("children", i, child:GetName())
+    end
+    print(p:GetChild("C1"):GetName(), p:GetChild("C2"):GetName())
+    
+    CS.Destroy(c1)
+    
+    for i, child in ipairs(p:GetChildren()) do
+        print("children", i, child:GetName())
+    end
+    print(p:GetChild("C1"):GetName(), p:GetChild("C2"):GetName())]]
+    
     ----------
     -- Game title
     
@@ -71,21 +89,25 @@ function Behavior:Awake(s)
     self.startNodeGO.s:HideLinkMarks()
     self.endNodeGO.s:HideLinkMarks()
     
-    local function onNewLink(link, targetNode)
+    local function onNewLink(link)
         local scale = Vector3(1)
         link.transform.localScale = Vector3(1,1,0)
         link:Animate("localScale", scale, 0.4, { 
             easeType = "inExpo",
             OnComplete = function()
-                
+                Tween.Timer(1, function()
+                    self:GoToMainMenu(1.5)
+                end)
             end
         })
     end
     
     self.startNodeGO.OnNewLink = onNewLink
     self.endNodeGO.OnNewLink = onNewLink
- 
-       
+    
+    self.startNodeGO.s.linkableNodes = { self.endNodeGO }
+    self.endNodeGO.s.linkableNodes = { self.startNodeGO }
+           
     ----------
     -- cursor
       
@@ -106,14 +128,11 @@ function Behavior:Awake(s)
             end
         })
         
-        self.cursorGO:Animate("opacity", 1, 0.5)
+        self.cursorGO:Animate("opacity", 0.7, 0.5)
         self.cursorGO:Animate("opacity", 0, 0.5, { delay = 2, startValue = 1 })
     end
     
     Tween.Timer(2, self.cursorGO.animation)
-    
-    
-    
 end
 
 
