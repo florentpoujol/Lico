@@ -37,10 +37,17 @@ function Behavior:Awake(s)
     windowGO:Append("Menus/Levels")
     
     local buttonGO = GameObject.Get("Icons.Levels.Renderer")
-    self.levelsButtonGO = buttonGO -- used in Start()
     buttonGO:InitWindow(windowGO, "mouseclick", nil, windowAnimation, "main_menu_window")
+    self.levelsButtonGO = buttonGO -- used in Start()
+        
+    -- generator
+    local windowGO = GameObject.Get("Windows.Generator Form")
+    windowGO:Append("Menus/Generator Form")
     
-    --
+    local buttonGO = GameObject.Get("Icons.Generator.Renderer")
+    buttonGO:InitWindow(windowGO, "mouseclick", nil, windowAnimation, "main_menu_window")
+    self.generatorButtonGO = buttonGO
+    
     local allWindows = GameObject.Get("UI.Windows").children
     for i=1, #allWindows do
         allWindows[i]:AddEventListener( "OnDisplay", function( go )
@@ -61,14 +68,15 @@ function Behavior:Awake(s)
         CS.Screen.SetSize(Options.screenSize.x, Options.screenSize.y)
         SoundManager.PlayMusic()
     end )
-    
-    
-    SoundManager.PlayMusic()
 end
 
 
 function Behavior:Start()
-    self.levelsButtonGO:FireEvent("OnLeftClickReleased", self.levelsButtonGO) -- Select levels window
+    local buttonGO = self.levelsButtonGO
+    if Game.levelToLoad ~= nil and Game.levelToLoad.isRandom == true then
+        buttonGO = self.generatorButtonGO
+    end
+    buttonGO:FireEvent("OnLeftClickReleased", buttonGO) -- Select levels window
 end
 
 Daneel.Debug.RegisterScript(Behavior)

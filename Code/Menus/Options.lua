@@ -6,46 +6,35 @@ function Behavior:Awake()
     
     self.UICameraGO = GameObject.Get("UI Camera") -- used in SetUISize()
     local UISizeGO = GameObject.Get("UI Size")
-    Options.uiSize = 6 -- 1 to 10
     
-    local sizeValueGO = UISizeGO:GetChild("Value", true)
-    self.uiSizeValueGO = sizeValueGO -- used in UpdateMenu()
-    sizeValueGO.textRenderer.text = 6
-    
-    local plusGO = UISizeGO:GetChild("+", true)
-    plusGO:AddTag("ui")
-    
-    local minusGO = UISizeGO:GetChild("-", true)
-    minusGO:AddTag("ui")
-    
-    local increment = function( increment )
-        local value = Options.uiSize + increment
-        value = math.clamp( value, 1, 9 )
-        sizeValueGO.textRenderer.text = value
-        
-        Options.uiSize = value
-        UpdateUISize() --The new UI size and Options are saved when the "OnScreenResized" event is fired from UpdateUISize() (event listened from [Main Menu/Awake])
+    local onUpdate = function(t)
+        if t.isChecked == true then
+            Options.uiSize = t.uiSize
+            UpdateUISize() -- this also save the options
+        end
     end
     
-    plusGO.OnClick = function() increment(1) end
-    minusGO.OnClick = function() increment(-1) end
+    self.uiSizeGOs = UISizeGO:GetChild("Radios").children
+    for i=1, #self.uiSizeGOs do
+        local toggle = self.uiSizeGOs[i].toggle
+        toggle.uiSize = tonumber( toggle.gameObject.name )
+        if toggle.uiSize == Options.uiSize then
+            toggle:Check(true)
+        end
+        toggle.OnUpdate = onUpdate
+    end
+    
     
     ----------
     -- ColorBlind mode
     
     local go = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
-    go:InitWindow("Color Blind Mode.Info Window", "mouseclick")   
+    go:InitWindow("Color Blind Mode.Info Icon.Info Window", "mousehover")   
 
     local checkboxGO = GameObject.Get("Color Blind Mode.Checkbox")
     checkboxGO.toggle.OnUpdate = function(toggle)
         Options.colorBlindModeActive = toggle.isChecked
         SaveOptions()
-        
-        if toggle.isChecked == true then
-            --toggle.gameObject.modelRenderer.color = Color(0,200,55)
-        else
-            --toggle.gameObject.modelRenderer.color = Color(255,0,50)
-        end
     end
     self.colorBlindToggle = checkboxGO.toggle -- used in UpdateMenu()
     
@@ -96,7 +85,13 @@ end
 -- Called wen the "OptionsLoaded" event is fired from LoadOptions()
 function Behavior:UpdateMenu()
     UpdateUISize()
-    self.uiSizeValueGO.textRenderer.text = Options.uiSize
+    
+    for i=1, #self.uiSizeGOs do
+        local toggle = self.uiSizeGOs[i].toggle
+        if toggle.uiSize == Options.uiSize then
+            toggle:Check(true)
+        end
+    end
     
     self.colorBlindToggle:Check( Options.colorBlindModeActive )
     

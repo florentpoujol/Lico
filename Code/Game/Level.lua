@@ -1,11 +1,4 @@
 
-local function hideLinkMarks()
-    local nodeGOs = GameObject.GetWithTag("node")
-    for i=1, #nodeGOs do
-        nodeGOs[i].s:HideLinkMarks()
-    end
-end
-
 local function colorTutorialsOnStart()
     -- hide the link marks
     local nodeGOs = GameObject.GetWithTag("node")
@@ -26,36 +19,69 @@ local function colorTutorialsOnStart()
     -- it is still called when the click happens on the link's renderer
 end
 
-
 local function colorTutorialsOnEnd()
     local linkScript = Asset("Entities/Link", "Script")
     linkScript.OnClick = linkScript.oOnClick
 end
 
+local function changeNodeColor()
+    local nodeGOs = GameObject.GetWithTag("node")
+    local colorName = ColorList[ math.random( #ColorList ) ]
+    local color = ColorsByName[ colorName ]
+
+
+    for i=1, #nodeGOs do
+        local node = nodeGOs[i]
+        node.s.colorName = colorName
+        node.s.color = color
+        
+        node.s.pillarGO.modelRenderer.color = color
+        node.s.rendererGO.modelRenderer.color = color        
+    end
+end
+
+
 
 Levels = {
     {
-        name = "Colors 1",
-        scenePath = "Levels/Colors",
+        name = "T1.0",
+        scenePath = "Levels/T1.0",
         OnStart = colorTutorialsOnStart,
         OnEnd = colorTutorialsOnEnd
     },
     
     {
-        name = "Colors 2",
-        scenePath = "Levels/Colors 2",
+        name = "1.1",
+        scenePath = "Levels/1.1",
         OnStart = colorTutorialsOnStart,
         OnEnd = colorTutorialsOnEnd
     },
     
     {
-        name = "Links 1",
-        scenePath = "Levels/Links",
+        name = "T2.0",
+        scenePath = "Levels/T2.0",
+        OnStart = changeNodeColor,
+    },
+    {
+        name = "2.1",
+        scenePath = "Levels/2.1",
+        OnStart = changeNodeColor,
     },
     
     {
-        name = "Links 2",
-        scenePath = "Levels/Links 2",
+        name = "2.2",
+        scenePath = "Levels/2.2",
+    },
+    
+    
+    {
+        name = "T2.3",
+        scenePath = "Levels/T2.3",
+    },
+    
+    {
+        name = "2.4",
+        scenePath = "Levels/2.4",
     },
 }
 

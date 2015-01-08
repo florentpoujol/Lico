@@ -26,10 +26,19 @@ Options = {
     uiSize = 6,
     colorBlindModeActive = false,
     
-    musicVolume = 0.5,
-    soundVolume = 0.5,
+    musicVolume = 0.4,
+    soundVolume = 0.4,
 } -- filled by LoadOptions() in [Menus/Options]
 
+
+NiceColorsByName = {
+    red = Color(225, 0, 30),
+    yellow = Color(190, 190, 0),
+    green = Color(0, 210, 45),
+    cyan = Color(0, 220, 220),
+    blue = Color(0, 100, 255),
+    magenta = Color(255, 30, 255),    
+}
 
 AllowedConnectionsByColor = {
     Red = { "Red", "Yellow", "Magenta" },

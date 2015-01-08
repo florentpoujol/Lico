@@ -68,7 +68,10 @@ function SoundManager.Play( category )
                 category.soundInstance:SetVolume( t.value )
             end,
             OnComplete = function()
-                Tween.Timer(1, function()
+                category.soundInstance:Stop()
+                --category.soundInstance = nil
+                
+                Tween.Timer(0.5, function()
                     -- this seems to prevent an exeption
                     category.soundInstance = nil
                 end)

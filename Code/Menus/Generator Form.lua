@@ -1,5 +1,9 @@
 
-function Behavior:Start()
+function Behavior:Awake()
+    self.gameObject.parent.camera:Destroy()
+    
+    local contentGO = self.gameObject.parent:GetChild("Origin")
+    
     -- grid size
     local onValidate = function(input)
         Generator.gridSize[ input.component ] = tonumber( input.gameObject.textRenderer.text )
@@ -18,7 +22,7 @@ function Behavior:Start()
     end
     
         
-    local xInput = GameObject.Get("Generator Form.Grid Size.X.Input").input
+    local xInput = contentGO:GetChild("Grid Size.X.Input").input
     xInput.component = "x"
     xInput.OnFocus = onFocus
     xInput.OnValidate = onValidate
@@ -26,7 +30,7 @@ function Behavior:Start()
     xInput.defaultValue = tostring(Generator.gridSize.x)
     xInput.gameObject.textRenderer.text = xInput.defaultValue
     
-    local yInput = GameObject.Get("Generator Form.Grid Size.Y.Input").input
+    local yInput = contentGO:GetChild("Grid Size.Y.Input").input
     yInput.component = "y"
     yInput.OnFocus = onFocus
     yInput.OnValidate = onValidate
@@ -37,33 +41,33 @@ function Behavior:Start()
     ----------
     -- Difficulty
     
-    local difficultyGOs = self.gameObject:GetChild("Difficulty").children
-    table.remove(difficultyGOs, 1)
-    --local difficulties = {"easy", "med", "hard"}
-    
-    for i=1, #difficultyGOs do
-        local go = difficultyGOs[i]
-        go.backgroundGO = go.child
-        go.backgroundGO:AddComponent("Toggle", {
-            group = "random_difficulty",
-            checkedModel = "Cubes/Grey 100",
-            uncheckedModel = "Cubes/Black",
-            difficulty = i,
-            OnUpdate = function(t)
-                if t.isChecked == true then
-                    Generator.difficulty = t.difficulty
-                end
-            end
-        })
+    self.difficultyGOs = contentGO:GetChild("Difficulty.Radios").children
+    local onUpdate = function(t)
+        if t.isChecked == true then
+            Generator.difficulty = t.difficulty
+        end
     end
     
-    difficultyGOs[ Generator.difficulty ].backgroundGO.toggle:Check(true)
+    local uncheckedModel = self.difficultyGOs[1].modelRenderer.model
+    
+    for i=1, #self.difficultyGOs do
+        local toggle = GUI.Toggle.New(self.difficultyGOs[i], {
+            group = "generator_difficulty",
+            checkedModel = "Cubes/Grey 50",
+            uncheckedModel = uncheckedModel,
+        })
+        toggle.difficulty = i
+        if i == Generator.difficulty then
+            toggle:Check(true)
+        end
+        toggle.OnUpdate = onUpdate
+    end
     
     
     ----------
     -- user seed input
     
-    local input = GameObject.Get("Seed Input").input
+    local input = contentGO:GetChild("Seed Input", true).input
     --input.defaultValue = tostring( os.time()-10 ) -- -10 so that it's not the same as the first Generator.userSeed
     input.OnFocus = onFocus
     input.OnValidate = function(input)
@@ -76,9 +80,10 @@ function Behavior:Start()
     end
     input.gameObject.textRenderer.text = Generator.userSeed
     
-    local newButton = GameObject.Get("New Seed Button")
-    newButton:AddTag("ui")
-    newButton:AddEventListener("OnLeftClickReleased", function(go)
+    
+    local newButton = contentGO:GetChild("New Seed Button", true)
+    newButton:AddTag("icon")
+    newButton.child:AddEventListener("OnLeftClickReleased", function(go)
         Generator.userSeed = tostring( os.time() )
         input.gameObject.textRenderer.text = Generator.userSeed
     end )
@@ -88,20 +93,22 @@ function Behavior:Start()
     -- generate button
     
     local genButton = GameObject.Get("Generate Button")
-    genButton:AddTag("ui")
-    genButton.OnLeftClickReleased = function(go)
+    genButton:AddTag("icon")
+    
+    local rendererGO = genButton.child    
+    rendererGO:AddEventListener("OnLeftClickReleased", function(go)
         Generator.fromGeneratorForm = true
         Game.levelToLoad = Generator.level
         Scene.Load("Main/Master Level")
-    end
-    
-    genButton.OnMouseEnter = function()
+    end)
+    --[[
+    genButton:AddEventListener("OnMouseEnter", function()
         genButton.transform.localScale = Vector3(1.1)
-    end
-    genButton.OnMouseExit = function()
+    end)
+    genButton:AddEventListener("OnMouseExit", function()
         genButton.transform.localScale = Vector3(1)
-    end
-    
+    end)
+    ]]
     
     ---------
     -- switch between inputs via tabs
@@ -116,7 +123,7 @@ function Behavior:Update()
     if CS.Input.WasButtonJustPressed("Tab") then
         if self.inputs[ self.focusedInputId ] ~= nil then
             self.inputs[ self.focusedInputId ]:Focus(false)
-            --print(self.inputs[ self.focusedInputId ], self.focusedInputId)
+
             self.focusedInputId = self.focusedInputId + 1
             if self.focusedInputId > 3 then
                 self.focusedInputId = 1

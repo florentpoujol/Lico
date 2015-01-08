@@ -25,10 +25,6 @@ function Behavior:Awake()
     end )
         
     self:BuildLevelGrid()
-    
-    ------------
-    -- spawn random generator form
-    GameObject.Get("Generator Form Origin"):Append("Menus/Generator Form")
 end
 
 

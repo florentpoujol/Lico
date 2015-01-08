@@ -1,88 +1,4 @@
 
-local knownKeysByPrintedTable = {}
-local currentlyPrintedTable = nil
-
---- Recursively print all key/value pairs within the provided table.
--- Fully prints the tables that have no metatable found as values.
--- @param t (table) The table to print.
--- @param maxLevel (number) [default=10] The max recursive level. Clamped between 1 and 10.
--- @param reprint (boolean) [default=false] Tell whether to print again the content of already printed table. If false a message "Already printed table with key" will be displayed as the table's value. /!\ See above for warning when maxLevel argument is -1.
-function table.printr( t, maxLevel, reprint, currentLevel  )
-    maxLevel = math.clamp( maxLevel or 10, 1, 10 )
-    if reprint == nil then
-        reprint = false
-    end
-    currentLevel = currentLevel or 1
-    local sLevel = string.rep( "| - - - ", currentLevel-1 ) -- string level
-
-    if t == nil then
-        print(level.."table.printr2( t ) : Provided table is nil.")
-        return
-    end
-
-    if currentLevel == 1 then
-        for i=1, #t do
-            local value = t[i]
-            if type( value ) == "table" and getmetatable( value ) == nil then
-                --knownKeysByPrintedTable[ value ] = i
-            end
-        end
-    
-    
-        print("~~~~~ table.printr("..tostring(t)..") ~~~~~ Start ~~~~~")       
-        if currentlyPrintedTable == nil then
-          currentlyPrintedTable = t
-        end
-    end   
-
-    local func = pairs
-    if table.getlength(t) == 0 then
-        print(level, "Table is empty.")
-    elseif table.isarray(t) then
-        func = ipairs -- just to be sure that the entries are printed in order
-    end
-    
-    for key, value in func(t) do
-        if type(key) == "string" then
-            key = '"'..key..'"'
-        end
-        if type(value) == "string" then
-            value = '"'..value..'"'
-        end
-        --knownKeysByPrintedTable = {}
-        if type( value ) == "table" and getmetatable( value ) == nil then
-            local knownKey = nil
-            if reprint == false then
-                knownKey = knownKeysByPrintedTable[ value ]
-            end
-            
-            if value == currentlyPrintedTable then
-                print(sLevel..tostring(key), "Table currently being printed: "..tostring(value) )
-            elseif knownKey ~= nil then
-                print(sLevel..tostring(key), "Already printed table with key "..knownKey..": "..tostring(value) )
-                
-            elseif currentLevel <= maxLevel then
-                if reprint == false then
-                    knownKeysByPrintedTable[ value ] = key
-                end
-                print(sLevel..tostring(key), value, "#"..table.getlength(value))
-                
-                table.printr( value, maxLevel, reprint, currentLevel + 1)
-            else
-                print(sLevel..tostring(key), value, "#"..table.getlength(value))
-            end
-        else
-            print(sLevel..tostring(key), value)
-        end
-    end
-
-    if currentLevel == 1 then
-        print("~~~~~ table.printr("..tostring(t)..") ~~~~~ End ~~~~~")
-        knownKeysByPrintedTable = {}
-        currentlyPrintedTable = nil
-    end
-end
-
 
 -- Allow for mouse over effect other than the tooltip
 -- Used in [Main Menu/Awake] and [Master Level/Awake]
@@ -107,92 +23,145 @@ function InitIcons( iconGOs )
         if not iconGO.isInit then
             iconGO.isInit = true
             
-            local rendererGO = iconGO:GetChild("Renderer")
-            if rendererGO == nil then
-                print("no renderer GO on icon", iconGO)
-            end
-            rendererGO:AddTag("ui")
-            
-            local tooltipGO = iconGO:GetChild("Tooltip")
-            if tooltipGO ~= nil then
-                rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+            local iconType = 1
+            if iconGO:HasTag("icon_type_2", true) then
+                iconType = 2
             end
             
-            rendererGO:Display(0.5)
-            
-            rendererGO:AddEventListener( "OnMouseEnter", function(go) go:Display(1) end )
-            
-            rendererGO:AddEventListener( "OnMouseExit", function(go)
-                if go.windowGO == nil or not go.windowGO.isDisplayed then -- in this last case go.windowGO is the actual window that is displayed via mouseclick event (not the tooltip)
-                    go:Display(0.5)
-                end
-                
-                if go.isScaleDown then
-                    -- icon has been clicked but the mouse exited it before the OnLeftClickReleased event
-                   go:scaleUp()
-                end
-            end )
-            
-            -- on left click pressed, scale down the icon
-            local scaleModifier = 0.8
-            rendererGO.isScaleDown = false
-            
-            function rendererGO.scaleUp(go)
-                local scale = go.transform.localScale
-                go.transform.localScale = scale / scaleModifier
-                go.isScaleDown = false
-            end
-            function rendererGO.scaleDown(go)
-                local scale = go.transform.localScale
-                go.transform.localScale = scale * scaleModifier
-                go.isScaleDown = true
-            end
-            
-            rendererGO:AddEventListener( "OnClick", function(go)
-                go:scaleDown()
-            end )
-            
-            rendererGO:AddEventListener( "OnLeftClickReleased", function(go)
-                if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then re-enter the icon
-                    go:scaleUp()
-                end
-            end )
+            if iconType == 1 then
 
-            -- makes the tooltip BG and arrow slighly transparent
-            if tooltipGO ~= nil then
-                local contentGO = tooltipGO:GetChild("Content")
-                tooltipGO.textGO = tooltipGO:GetChild("Text", true)
-                tooltipGO.bar1GO = tooltipGO:GetChild("Background", true)
-                tooltipGO.bar2GO = tooltipGO:GetChild("Arrow", true)
+                local rendererGO = iconGO:GetChild("Renderer")
+                if rendererGO == nil then
+                    print("no renderer GO on icon", iconGO)
+                end
+                rendererGO:AddTag("ui")
                 
-                tooltipGO:AddEventListener( "OnDisplay", function(go)                   
-                    if go.isDisplayed then
-                        tooltipGO.textGO:Display(0)
-                        tooltipGO.bar1GO:Display(0)
-                        tooltipGO.bar2GO:Display(0)
-                        
-                        tooltipGO.textGO:Animate("opacity", 1, 0.5)
-                        tooltipGO.bar1GO:Animate("opacity", 1, 0.5)
-                        tooltipGO.bar2GO:Animate("opacity", 1, 0.5)
-                    else
-                        -- "un-hide" the tooltip
-                        tooltipGO.transform.localPosition = Vector3(0)
-                        
-                        tooltipGO.textGO:Animate("opacity", 0, 0.3)
-                        tooltipGO.bar1GO:Animate("opacity", 0, 0.3)
-                        tooltipGO.bar2GO:Animate("opacity", 0, 0.3, function()
-                            -- "re-hide" the tooltip
-                            tooltipGO.transform.localPosition = Vector3(0,0,999)
-                            
-                            tooltipGO.textGO:Display(1)
-                            tooltipGO.bar1GO:Display(1)
-                            tooltipGO.bar2GO:Display(1)
-                        end)
-                    end -- if go.isDisplayed 
+                local tooltipGO = iconGO:GetChild("Tooltip")
+                if tooltipGO ~= nil then
+                    rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+                end
+                
+                rendererGO:Display(0.5)
+                
+                rendererGO:AddEventListener( "OnMouseEnter", function(go) go:Display(1) end )
+                
+                rendererGO:AddEventListener( "OnMouseExit", function(go)
+                    if go.windowGO == nil or not go.windowGO.isDisplayed then -- in this last case go.windowGO is the actual window that is displayed via mouseclick event (not the tooltip)
+                        go:Display(0.5)
+                    end
+                    
+                    if go.isScaleDown then
+                        -- icon has been clicked but the mouse exited it before the OnLeftClickReleased event
+                       go:scaleUp()
+                    end
                 end )
                 
-                --rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
-            end -- if tooltipGO ~= nil
+                -- on left click pressed, scale down the icon
+                local scaleModifier = 0.8
+                rendererGO.isScaleDown = false
+                
+                function rendererGO.scaleUp(go)
+                    local scale = go.transform.localScale
+                    go.transform.localScale = scale / scaleModifier
+                    go.isScaleDown = false
+                end
+                function rendererGO.scaleDown(go)
+                    local scale = go.transform.localScale
+                    go.transform.localScale = scale * scaleModifier
+                    go.isScaleDown = true
+                end
+                
+                rendererGO:AddEventListener( "OnClick", function(go)
+                    go:scaleDown()
+                end )
+                
+                rendererGO:AddEventListener( "OnLeftClickReleased", function(go)
+                    if go.isScaleDown then -- scale may be up if the click happens then the cursor exit then re-enter the icon
+                        go:scaleUp()
+                    end
+                end )
+    
+                -- makes the tooltip BG and arrow slighly transparent
+                if tooltipGO ~= nil then
+                    local contentGO = tooltipGO:GetChild("Content")
+                    tooltipGO.textGO = tooltipGO:GetChild("Text", true)
+                    tooltipGO.bar1GO = tooltipGO:GetChild("Background", true)
+                    tooltipGO.bar2GO = tooltipGO:GetChild("Arrow", true)
+                    
+                    tooltipGO:AddEventListener( "OnDisplay", function(go)                   
+                        if go.isDisplayed then
+                            tooltipGO.textGO:Display(0)
+                            tooltipGO.bar1GO:Display(0)
+                            tooltipGO.bar2GO:Display(0)
+                            
+                            tooltipGO.textGO:Animate("opacity", 1, 0.5)
+                            tooltipGO.bar1GO:Animate("opacity", 1, 0.5)
+                            tooltipGO.bar2GO:Animate("opacity", 1, 0.5)
+                        else
+                            -- "un-hide" the tooltip
+                            tooltipGO.transform.localPosition = Vector3(0)
+                            
+                            tooltipGO.textGO:Animate("opacity", 0, 0.3)
+                            tooltipGO.bar1GO:Animate("opacity", 0, 0.3)
+                            tooltipGO.bar2GO:Animate("opacity", 0, 0.3, function()
+                                -- "re-hide" the tooltip
+                                tooltipGO.transform.localPosition = Vector3(0,0,999)
+                                
+                                tooltipGO.textGO:Display(1)
+                                tooltipGO.bar1GO:Display(1)
+                                tooltipGO.bar2GO:Display(1)
+                            end)
+                        end -- if go.isDisplayed 
+                    end )
+                    
+                    --rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+                end -- if tooltipGO ~= nil
+            
+            
+            elseif iconType == 2 then
+                
+                local backgroundGO = iconGO.child:GetChild("Background")
+                local color = NiceColorsByName[ backgroundGO.modelRenderer.model.name:lower() ]
+                backgroundGO.modelRenderer.color = color
+
+                local hiddenPosition = iconGO.transform.localPosition
+                local displayPosition = hiddenPosition + Vector3(0,0.7,0)
+
+                backgroundGO:AddTag("ui")
+                
+                backgroundGO:AddEventListener( "OnMouseEnter", function(go)
+                    if go.windowGO == nil or not go.windowGO.isDisplayed then
+                        --backgroundGO.modelRenderer.opacity = 1
+                        iconGO.transform.localPosition = displayPosition
+                    end
+                end )
+                
+                backgroundGO:AddEventListener( "OnMouseExit", function(go)
+                    if go.windowGO == nil or not go.windowGO.isDisplayed then -- in this last case go.windowGO is the actual window that is displayed via mouseclick event (not the tooltip)
+                        --backgroundGO.modelRenderer.opacity = 0
+                        iconGO.transform.localPosition = hiddenPosition
+                    end
+                end )
+                
+                if backgroundGO.windowGO ~= nil then
+                    backgroundGO.windowGO:AddEventListener( "OnDisplay", function(go)
+                        if go.isDisplayed == true then
+                            --backgroundGO.modelRenderer.opacity = 1
+                            iconGO.transform.localPosition = displayPosition
+                        else
+                            --backgroundGO.modelRenderer.opacity = 0
+                            iconGO.transform.localPosition = hiddenPosition
+                        end
+                    end)
+                end
+                
+                local tooltipGO = iconGO:GetChild("Tooltip")
+                if tooltipGO ~= nil then
+                    backgroundGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+                    tooltipGO:GetChild("Background", true).modelRenderer.color = color
+                end
+            end -- if iconType
+            
         end -- if not iconGO.isInit
     end -- for iconGOs
     
@@ -215,25 +184,26 @@ end -- InitIcons()
 
 
 
-function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, animationFunction, group )
+function GameObject.InitWindow( buttonGO, gameObjectNameOrAsset, eventType, buttonTag, animationFunction, group )
     local windowGO = gameObjectNameOrAsset
     if type(gameObjectNameOrAsset) == "string" then
-        windowGO = go:GetChild( gameObjectNameOrAsset ) or GameObject.Get( gameObjectNameOrAsset )
+        windowGO = buttonGO:GetChild( gameObjectNameOrAsset ) or GameObject.Get( gameObjectNameOrAsset )
     end
     
     if windowGO == nil then
-        print("GameObject.InitWindow(): Window not found", go, gameObjectNameOrAsset, eventType, tag)
+        print("GameObject.InitWindow(): Window not found", buttonGO, gameObjectNameOrAsset, eventType, buttonTag)
         return
     end
     
     --
-    windowGO.buttonGO = go
+    windowGO.buttonGO = buttonGO
     windowGO.transform.localPosition = Vector3(0)
     windowGO:Display(false)
     
     --
-    if tag ~= nil then
-        go:AddTag(tag)
+    if buttonTag ~= nil then
+        print("add tag on button", buttonTag, buttonGO, windowGO)
+        buttonGO:AddTag(buttonTag)
     end
 
     --
@@ -256,18 +226,18 @@ function GameObject.InitWindow( go, gameObjectNameOrAsset, eventType, tag, anima
 
     --   
     if eventType == "mousehover" then
-        go:AddEventListener( "OnMouseEnter", function(go)
+        buttonGO:AddEventListener( "OnMouseEnter", function(go)
             windowGO:Display()
         end )
         
-        go:AddEventListener( "OnMouseExit", function(go)
+        buttonGO:AddEventListener( "OnMouseExit", function(go)
             windowGO:Display(false)
         end )
         
     elseif eventType == "mouseclick" then
-        go.windowGO = windowGO
+        buttonGO.windowGO = windowGO
         
-        go:AddEventListener( "OnLeftClickReleased", function()
+        buttonGO:AddEventListener( "OnLeftClickReleased", function()
             if animationFunction == nil then
                 if group ~= nil and not windowGO.isDisplayed then
                     windowGO:Display()

@@ -120,7 +120,7 @@ function Behavior:Init( colorName )
         rendererGO.child.modelRenderer.opacity = 0.5
     else
         numberGO:Destroy()
-        rendererGO.child:Destroy()
+        rendererGO.child:Destroy() -- the renderer's child is the mask that opacify the node so that the number stands out more
     end
     
     ----------

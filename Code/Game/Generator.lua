@@ -21,7 +21,7 @@ Generator = {
         isRandom = true,
         
         -- Called from [Mater Level/Start]
-        initFunction = function()
+        OnStart = function()
             if Generator.fromGeneratorForm == true then
                 Generator.ProcessUserSeed()
             else
@@ -399,7 +399,7 @@ function Generator.Generate()
     
     if useCoroutine == true then
         Generator.coroutine = coroutine.create( buildGrid )
-        -- is resumed from [Master Level/Update]
+        -- Is resumed in [Master Level/Update]
     else
         Generator.coroutine = nil
         buildGrid()

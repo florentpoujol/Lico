@@ -68,6 +68,10 @@ function Behavior:Awake( s )
     local menuIconGO = GameObject.Get("Icons.Main Menu.Renderer")
     self.menuIconGO = menuIconGO -- used in EndLevel()
     
+    if Game.levelToLoad.isRandom == true then
+        self.menuIconGO.textRenderer.text = "#"
+    end
+    
     menuIconGO:AddEventListener( "OnLeftClickReleased", function(go)
         Daneel.Event.Fire( Game.levelToLoad, "OnEnd" )
         
@@ -82,10 +86,6 @@ function Behavior:Awake( s )
     if helpWindowGO ~= nil then
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
         local originGO = helpWindowGO.child -- "Origin" 
-        if originGO.hud == nil then
-            --GUI.Hud.New(originGO)
-        end
-        --originGO.hud.savedPosition = originGO.hud.position
     else
         helpIconGO.parent:RemoveTag("icon")
         helpIconGO.parent:AddTag("inactive_icon")
@@ -96,7 +96,7 @@ function Behavior:Awake( s )
     self.nextIconGO = nextIconGO -- used in EndLevel()
     
     if Game.levelToLoad.isRandom == true then
-        nextIconGO.textRenderer.text = "0" -- "refresh" icon
+        nextIconGO.textRenderer.text = "%" -- "refresh" icon
         
         local tooltipTextGO = nextIconGO.parent:GetChild("Text", true) -- Icons.Next Level.Tooltip.Content.Text
         tooltipTextGO.textRenderer.text = "Generate new level"
@@ -233,6 +233,7 @@ function Behavior:Update()
             if coroutineCooldown <= 0 then
                 coroutineCooldown = maxCooldown
                 coroutine.resume(Generator.coroutine)
+                
                 self.progressbarGO.progressBar.value = #GameObject.GetWithTag("node")
             end
         else

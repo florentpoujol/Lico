@@ -23,7 +23,7 @@ Click on a link to remove it.]],
 
 -- Options
 
-    colorBlindMode = [[The color-blind mode adds number on top of the nodes so that you can still know how to link them together even without seing the colors:
+    colorBlindMode = [[The color-blind mode adds number on top of the nodes so that you can still know how to link them together even without distinguishing the colors:...
 
 1 link to 6, 1 and 2
 2 link to 1, 2 and 3

@@ -12,6 +12,10 @@ tags string ""
 function Behavior:Awake()
     if self.tags ~= "" then
         local tags = string.split( self.tags, "," )
+        for i=1, #tags do
+            tags[i] = string.trim( tags[i] )
+        end
         self.gameObject:AddTag( tags )
     end
 end
+
