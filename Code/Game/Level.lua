@@ -73,10 +73,9 @@ Levels = {
         scenePath = "Levels/2.2",
     },
     
-    
     {
-        name = "T2.3",
-        scenePath = "Levels/T2.3",
+        name = "2.3",
+        scenePath = "Levels/2.3",
     },
     
     {

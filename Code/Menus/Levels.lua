@@ -3,8 +3,23 @@ function Behavior:Awake()
     
     LoadCompletedLevels()
     
-    --    
+    --
     self.gridGO = self.gameObject:GetChild("Grid Origin", true)
+    self.firstLevelIndex = 1
+    self.lastFirstLevelIndex = -999
+    
+    Daneel.Event.Listen("OnScreenResized", function() self:SetGridParams() end)
+    
+    --
+    Daneel.Event.Listen("CompletedLevelsLoaded", function() 
+        if self.firstLevelIndex ~= nil then
+            self:BuildLevelGrid()
+        end
+    end )
+end
+
+
+function Behavior:SetGridParams()
     self.gridLayout = { x = 7, y = 4 }
     self.gridElemCount = self.gridLayout.x * self.gridLayout.y
     
@@ -14,16 +29,6 @@ function Behavior:Awake()
     self.cartridgeWidth = ( (screenSize.x - 30) / self.gridLayout.x) * pixelsToUnits - 1   -- width of a cartridge in pixels
     self.cartridgeHeight = ( (screenSize.y - 70) / self.gridLayout.y) * pixelsToUnits
     
-    self.firstLevelIndex = 1
-    self.lastFirstLevelIndex = -999
-
-    ----------
-    Daneel.Event.Listen("CompletedLevelsLoaded", function() 
-        if self.firstLevelIndex ~= nil then
-            self:BuildLevelGrid()
-        end
-    end )
-        
     self:BuildLevelGrid()
 end
 

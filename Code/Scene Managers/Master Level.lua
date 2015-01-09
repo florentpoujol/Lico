@@ -1,12 +1,7 @@
 
 MasterLevel = nil -- scripted behavior instance
 
-function Behavior:Awake( s )
-    if s ~= true then
-        self:Awake(true)
-        return
-    end
-    
+function Behavior:Awake()   
     MasterLevel = self
     -- MasterLevel is accessed from the initfunction of the random level 
     -- and to call CheckVictory() from [Link/Init], when the link animation has completed
@@ -345,23 +340,19 @@ function Behavior:EndLevel()
             end
             
             local nextLevel = nil
-            for i=1, #Levels do
+            --[[for i=1, #Levels do
                 local level = Levels[i]
                 if not level.isCompleted and level.id > currentLevel.id then
                     nextLevel = level
                     break
                 end
-            end
+            end]]
             
             if nextLevel == nil then
                 -- all levels must have been completed already, get next level
                 nextLevel = GetLevel( currentLevel.id + 1 )
             end
             
-            -- if nextLevel is still nill, 
-            --if nextLevel == nil then
-                --nextLevel = Levels[ math.random( #Levels ) ]
-            ---end
             Game.levelToLoad = nextLevel
         end
     end

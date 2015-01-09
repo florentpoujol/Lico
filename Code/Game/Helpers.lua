@@ -36,10 +36,7 @@ function InitIcons( iconGOs )
                 end
                 rendererGO:AddTag("ui")
                 
-                local tooltipGO = iconGO:GetChild("Tooltip")
-                if tooltipGO ~= nil then
-                    rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
-                end
+                
                 
                 rendererGO:Display(0.5)
                 
@@ -80,9 +77,14 @@ function InitIcons( iconGOs )
                         go:scaleUp()
                     end
                 end )
-    
+                
+                
+                local tooltipGO = iconGO:GetChild("Tooltip")
+                               
                 -- makes the tooltip BG and arrow slighly transparent
                 if tooltipGO ~= nil then
+                    rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
+                
                     local contentGO = tooltipGO:GetChild("Content")
                     tooltipGO.textGO = tooltipGO:GetChild("Text", true)
                     tooltipGO.bar1GO = tooltipGO:GetChild("Background", true)
@@ -113,8 +115,6 @@ function InitIcons( iconGOs )
                             end)
                         end -- if go.isDisplayed 
                     end )
-                    
-                    --rendererGO:InitWindow(tooltipGO, "mousehover", nil, nil, "icon_tooltip")
                 end -- if tooltipGO ~= nil
             
             
@@ -247,6 +247,24 @@ function GameObject.InitWindow( buttonGO, gameObjectNameOrAsset, eventType, butt
             else
                 animationFunction( windowGO )
             end
+        end )
+    
+    elseif eventType == "mouse" then
+        buttonGO.windowGO = windowGO
+        buttonGO.hideOnMouseExit = true
+           
+        buttonGO:AddEventListener( "OnMouseEnter", function(go)
+            go.windowGO:Display()
+        end )
+        
+        buttonGO:AddEventListener("OnMouseExit", function(go)
+            if go.hideOnMouseExit == true then
+                go.windowGO:Display(false)
+            end
+        end)
+        
+        buttonGO:AddEventListener( "OnLeftClickReleased", function(go)
+            go.hideOnMouseExit = not go.hideOnMouseExit
         end )
     end
 end

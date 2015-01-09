@@ -28,9 +28,10 @@ function Behavior:Awake()
     ----------
     -- ColorBlind mode
     
-    local go = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
-    go:InitWindow("Color Blind Mode.Info Icon.Info Window", "mousehover")   
+    local buttonGO = GameObject.Get("Color Blind Mode.Info Icon.Renderer")
+    buttonGO:InitWindow("Window", "mouse")
 
+       
     local checkboxGO = GameObject.Get("Color Blind Mode.Checkbox")
     checkboxGO.toggle.OnUpdate = function(toggle)
         Options.colorBlindModeActive = toggle.isChecked

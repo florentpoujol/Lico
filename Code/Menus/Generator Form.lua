@@ -89,6 +89,10 @@ function Behavior:Awake()
     end )
     
     
+    local buttonGO = contentGO:GetChild("Seed.Info Icon")
+    buttonGO:AddTag("icon")
+    buttonGO.child:InitWindow("Window", "mouse")
+
     ----------
     -- generate button
     

@@ -2,6 +2,8 @@
 CS.Screen.SetSize(900, 506) -- 1.78 = 16:9   840x470
 Screen.lastScreenSize = CS.Screen.GetSize()
 
+-- my smartphone has a resolution in-browser of 600*340
+
 Game = {
     isOnSplashScreen = false, -- set to true [Splash Screen/Awake], set to false [Splash Screen/GoToMainMenu], used in [Node/Init]
     
