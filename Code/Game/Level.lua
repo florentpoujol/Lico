@@ -82,6 +82,23 @@ Levels = {
         name = "2.4",
         scenePath = "Levels/2.4",
     },
+    
+    {
+        name = "GT",
+        scenePath = "Levels/Level Game Title",
+        OnStart =function()
+            -- hide the link marks
+            local nodeGOs = GameObject.GetWithTag("node")
+            for i=1, #nodeGOs do
+                local node = nodeGOs[i]
+                node.s:HideLinkMarks()
+                
+                node.s.maxLinkCount = 4 
+            end
+            
+            GameObject.Get("World Camera").camera.orthographicScale = 15
+        end
+    },
 }
 
 

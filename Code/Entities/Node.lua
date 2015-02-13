@@ -209,6 +209,29 @@ function Behavior:Init( colorName )
 end
 
 
+-- called from [Master Level/ReparentNodes]
+function Behavior:Reparent()
+    self.gameObject.parent = "Nodes Parent" -- "World Camera.Rotate X.Rotate Y.World.Nodes Parent"
+    local nodeGlobalPos = self.gameObject.transform.position
+    
+    local levelPlaneGOs = GameObject.GetWithTag( "level_plane" )
+    for i=1, #levelPlaneGOs do
+        local relPos = levelPlaneGOs[i].transform:WorldToLocal( nodeGlobalPos )
+        -- position relative to the level plane
+        if relPos.x > 0 and relPos.y < 0 then
+            self.gameObject.levelPlane = levelPlaneGOs[i]
+            break
+        end
+    end
+    
+    local localPos = self.gameObject.transform.localPosition    
+    self.nodeBoundaries = { 
+        min = Vector2( localPos.x - 0.5, localPos.z - 0.5 ),
+        max = Vector2( localPos.x + 0.5, localPos.z + 0.5 ),
+    }
+end
+
+
 -- Called from [Master Level/Update]
 function Behavior:DebugLinkableNodes( show )
     if show == nil then

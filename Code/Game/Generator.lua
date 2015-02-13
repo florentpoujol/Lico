@@ -28,6 +28,7 @@ Generator = {
                 Generator.SetSeed()
                 -- set level name, user seed, random seed
             end
+            
             Generator.fromGeneratorForm = false
             
             MasterLevel.levelNameGO.textRenderer.text = Generator.levelName
@@ -38,12 +39,16 @@ Generator = {
             end) -- fired at the end of Generate()
             
             Generator.Generate()
-        end
+        end,
+        
     },
+    
 }
 
 
 function Generator.Generate()     
+    
+    
     math.randomseed( Generator.randomseed ) 
     --print("set randomseed", Generator.randomseed )
     math.random(); math.random(); math.random();
@@ -393,7 +398,7 @@ function Generator.Generate()
         
         -- center the level
         nodesOriginGO.transform.localPosition = Vector3( gridSize.x-1, 0, -(gridSize.y-1) )
-        
+               
         Daneel.Event.Fire("RandomLevelGenerated")
     end
     

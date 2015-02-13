@@ -292,12 +292,196 @@ function GameObject.Append( gameObject, gameObjectNameOrInstanceOrScenePath, loc
     return child
 end
 
+------------------------
+
+function Vector2.GetDistance( a, b )
+    return ( b - a ):GetLength()
+end
+
+function Vector2.GetSqrDistance( a, b )
+    return ( b - a ):GetSqrLength()
+end
+
+local frameCount = 0
+
+function MouseInput.Update( mouseInput )
+    local forceUpdate = false
+    local components = MouseInput.components
+    if mouseInput ~= nil then
+        forceUpdate = true
+        components = { mouseInput }
+    end
+    if #components == 0 then
+        return
+    end
+    
+    local mouseDelta = CS.Input.GetMouseDelta()
+    local mouseIsMoving = false
+    if mouseDelta.x ~= 0 or mouseDelta.y ~= 0 then
+        mouseIsMoving = true
+    end
+    local levelMousePosition = Game.levelMousePosition
+
+    local leftMouseJustPressed = false
+    local leftMouseDown = false
+    local leftMouseJustReleased = false
+    if MouseInput.buttonExists.LeftMouse then
+        leftMouseJustPressed = CS.Input.WasButtonJustPressed( "LeftMouse" )
+        leftMouseDown = CS.Input.IsButtonDown( "LeftMouse" )
+        leftMouseJustReleased = CS.Input.WasButtonJustReleased( "LeftMouse" )
+    end
+
+    local rightMouseJustPressed = false
+    if MouseInput.buttonExists.RightMouse then
+        rightMouseJustPressed = CS.Input.WasButtonJustPressed( "RightMouse" )
+    end
+
+    local wheelUpJustPressed = false
+    if MouseInput.buttonExists.WheelUp then
+        wheelUpJustPressed = CS.Input.WasButtonJustPressed( "WheelUp" )
+    end
+
+    local wheelDownJustPressed = false
+    if MouseInput.buttonExists.WheelDown then
+        wheelDownJustPressed = CS.Input.WasButtonJustPressed( "WheelDown" )
+    end
+    
+    if 
+        forceUpdate == true or
+        mouseIsMoving == true or
+        leftMouseJustPressed == true or 
+        leftMouseDown == true or
+        leftMouseJustReleased == true or 
+        rightMouseJustPressed == true or
+        wheelUpJustPressed == true or
+        wheelDownJustPressed == true
+    then
+        frameCount = frameCount + 1
+        if 
+            forceUpdate == false and
+            mouseIsMoving == true and
+            leftMouseJustPressed == false and
+            leftMouseDown == false and
+            leftMouseJustReleased == false and
+            rightMouseJustPressed == false and
+            wheelUpJustPressed == false and
+            wheelDownJustPressed == false and
+            frameCount % 3 == 0
+        then
+            return
+        end
+    
+        local doubleClick = false
+        if leftMouseJustPressed then
+            doubleClick = ( Daneel.Time.frameCount <= MouseInput.lastLeftClickFrame + MouseInput.Config.doubleClickDelay )   
+            MouseInput.lastLeftClickFrame = Daneel.Time.frameCount
+        end
+
+        local reindexComponents = false
+        
+        for i=1, #components do
+            local component = components[i]
+            local mi_gameObject = component.gameObject -- mouse input game object
+
+            if mi_gameObject.inner ~= nil and not mi_gameObject.isDestroyed and mi_gameObject.camera ~= nil then
+                local ray = mi_gameObject.camera:CreateRay( CS.Input.GetMousePosition() )
+                
+                for j=1, #component._tags do
+                    local tag = component._tags[j]
+                    local gameObjects = GameObject.GetWithTag( tag )
+
+                    for k=1, #gameObjects do
+                        local gameObject = gameObjects[k]
+                        -- gameObject is the game object whose position is checked against the raycasthit
+                        
+                        local raycastHit = nil
+                        
+                        if tag == "node" then
+                            local boundaries = nil
+                            if gameObject.s ~= nil then
+                                boundaries = gameObject.s.nodeBoundaries
+                            end
+                            local nodeLevelPlane = gameObject.levelPlane
+                            
+                            if 
+                                nodeLevelPlane ~= nil and nodeLevelPlane == Game.hoveredLevelPlane and
+                                boundaries ~= nil and
+                                levelMousePosition.x >= boundaries.min.x and levelMousePosition.x <= boundaries.max.x and
+                                levelMousePosition.y >= boundaries.min.y and levelMousePosition.y <= boundaries.max.y
+                            then
+                                raycastHit = {}
+                            end    
+                        else
+                            raycastHit = ray:IntersectsGameObject( gameObject )
+                        end
+                        
+                        if gameObject.name == "Level Plane" then
+                            --print("level plane", raycastHit, boundaries)
+                        end
+                        
+                        if raycastHit ~= nil then
+                            -- the mouse pointer is over the gameObject
+                            if not gameObject.isMouseOver then
+                                gameObject.isMouseOver = true
+                                Daneel.Event.Fire( gameObject, "OnMouseEnter", gameObject )
+                            end
+
+                        elseif gameObject.isMouseOver == true then
+                            -- the gameObject was still hovered the last frame
+                            gameObject.isMouseOver = false
+                            Daneel.Event.Fire( gameObject, "OnMouseExit", gameObject )
+                        end
+                        
+                        if gameObject.isMouseOver == true then
+                            Daneel.Event.Fire( gameObject, "OnMouseOver", gameObject, raycastHit )
+                            
+                            if leftMouseJustPressed == true then
+                                Daneel.Event.Fire( gameObject, "OnClick", gameObject )
+
+                                if doubleClick == true then
+                                    Daneel.Event.Fire( gameObject, "OnDoubleClick", gameObject )
+                                end
+                            end
+
+                            if leftMouseDown == true and mouseIsMoving == true then
+                                Daneel.Event.Fire( gameObject, "OnDrag", gameObject )
+                            end
+
+                            if leftMouseJustReleased == true then
+                                Daneel.Event.Fire( gameObject, "OnLeftClickReleased", gameObject )
+                            end
+
+                            if rightMouseJustPressed == true then
+                                Daneel.Event.Fire( gameObject, "OnRightClick", gameObject )
+                            end
+
+                            if wheelUpJustPressed == true then
+                                Daneel.Event.Fire( gameObject, "OnWheelUp", gameObject )
+                            end
+                            if wheelDownJustPressed == true then
+                                Daneel.Event.Fire( gameObject, "OnWheelDown", gameObject )
+                            end
+                        end
+                    end -- for gameObjects with current tag
+                end -- for component._tags
+            else
+                -- this component's game object is dead or has no camera component
+                components[i] = nil
+                reindexComponents = true
+            end -- gameObject is alive
+        end -- for components
+
+        if reindexComponents == true and mouseInput == nil then
+            MouseInput.components = table.reindex( components )
+        end
+    end -- if mouseIsMoving, ...
+end -- end MouseInput.Update()
 
 ------------------------
 
 -- IMPORTANT
 -- because some menu elements are position on the X,Y plane via a Hud component, 
--- they must be Displayed/hidden by being moving them on the Z axis only
+-- they must be Displayed/hidden by being moved on the Z axis only
 
 function GameObject.Display( gameObject, value, forceUseLocalPosition )
     local display = false

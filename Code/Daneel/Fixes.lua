@@ -254,3 +254,38 @@ function Tween.Update()
     
     o()
 end -- end Tween.Update
+
+
+
+----------------------
+-- reset the test gameObject's parent after getting the position
+
+local worldToLocalGO = nil
+
+function Transform.WorldToLocal( transform, position )
+    local go = worldToLocalGO
+    if go == nil or go.inner == nil then
+        worldToLocalGO = CS.CreateGameObject( "WorldToLocal", transform.gameObject )
+        go = worldToLocalGO
+    else
+        go:SetParent( transform.gameObject )
+    end
+    go.transform:SetPosition( position )
+    position = go.transform:GetLocalPosition()
+    go:SetParent( nil )
+    return position
+end
+
+function Transform.LocalToWorld( transform, position )
+    local go = worldToLocalGO
+    if go == nil or go.inner == nil then
+        worldToLocalGO = CS.CreateGameObject( "WorldToLocal", transform.gameObject )
+        go = worldToLocalGO
+    else
+        go:SetParent( transform.gameObject )
+    end
+    go.transform:SetLocalPosition( position )
+    position = go.transform:GetPosition()
+    go:SetParent( nil )
+    return position
+end

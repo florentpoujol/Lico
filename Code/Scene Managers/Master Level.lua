@@ -2,6 +2,7 @@
 MasterLevel = nil -- scripted behavior instance
 
 function Behavior:Awake()   
+
     MasterLevel = self
     -- MasterLevel is accessed from the initfunction of the random level 
     -- and to call CheckVictory() from [Link/Init], when the link animation has completed
@@ -30,7 +31,10 @@ function Behavior:Awake()
     self.levelNameGO = GameObject.Get("Level Name")
     if not level.isRandom then
         self.levelNameGO.textRenderer.text = level.name
-        self:ReparentNodes()
+        
+        Daneel.Event.Listen("ReparentNodes", self.ReparentNodes)
+        Daneel.Event.Fire("ReparentNodes", self )
+        -- self:ReparentNodes()
     end
     -- when level is random, reparenting will be done when the node have been generated in Generator.randomLevel.initFunction()
 
@@ -54,6 +58,8 @@ function Behavior:Awake()
         helpWindowGO = helpGO:GetChild("Window")
         if helpWindowGO ~= nil then
             GameObject.Get("Help Window Parent"):Append(helpWindowGO)
+            helpWindowGO.areaType = "bottomleft"
+            Area.New( helpWindowGO )
         end
     end
 
@@ -80,7 +86,10 @@ function Behavior:Awake()
     
     if helpWindowGO ~= nil then
         helpIconGO:InitWindow(helpWindowGO, "mouseclick")
-        local originGO = helpWindowGO.child -- "Origin" 
+        
+        helpWindowGO:AddEventListener("OnDisplay", function(go)
+            print(go.transform.localScale)
+        end)
     else
         helpIconGO.parent:RemoveTag("icon")
         helpIconGO.parent:AddTag("inactive_icon")
@@ -160,6 +169,31 @@ function Behavior:Awake()
     -- when random level, is done from Generator.randomLevel.initFunction()
     
     SoundManager.PlayMusic()
+    
+    -----------
+    -- level planes
+    Game.hoveredLevelPlane = GameObject.GetWithTag("level_plane")[1]
+    Game.levelMousePosition = Vector2(0)
+    
+    local onMouseEnter = function( go )
+        Game.hoveredLevelPlane = go
+    end
+    
+    local worldGO = GameObject.Get("World")
+    local onMouseOver = function( go, raycastHit )
+        local pos = worldGO.transform:WorldToLocal( raycastHit.hitPosition )
+        Game.levelMousePosition.x = pos.x  -- 100 is the level plane's scale
+        Game.levelMousePosition.y = pos.z 
+        -- print(Game.levelMousePosition)
+    end
+    
+    local levelPlaneGOs = GameObject.Get("Level Planes").children
+    for i=1, #levelPlaneGOs do
+        local planeGO = levelPlaneGOs[i]
+        planeGO.modelRenderer.opacity = 0
+        planeGO:AddEventListener( "OnMouseEnter", onMouseEnter ) 
+        planeGO:AddEventListener( "OnMouseOver", onMouseOver ) 
+    end
 end
 
 
@@ -175,16 +209,24 @@ end
 -- Reparent the nodes from the level content's root to the world's node parent
 -- Called from Awake() or Generator.initFunction()
 function Behavior:ReparentNodes()
-    local nodes = self.levelRoot:GetChild("Nodes")
-    nodes.parent = GameObject.Get("World.Nodes Parent")
-    nodes.transform.localPosition = Vector3(0)
-    nodes.transform.localEulerAngles = Vector3(0)
+    local nodesRootGO = self.levelRoot:GetChild("Nodes")
+    nodesRootGO.parent = "World"
+    nodesRootGO.transform.localPosition = Vector3(0)
+    nodesRootGO.transform.localEulerAngles = Vector3(0)
+    local nodesParentGO = nodesRootGO:GetChild("Origin") or nodesRootGO
+    
+    local nodeGOs = nodesParentGO.children
+    for i=1, #nodeGOs do
+        nodeGOs[i].s:Reparent()
+    end
+    
+    nodesRootGO:Destroy()
 end
 
 
 -- Updates the World camera's orthographic scale so that the whole level (not more, not less) just fit in the viewport
 -- Nodes must have been reparented with ReparentNodes() before.
--- Called from Awake() or Generator.rendomLevel.initFunction()
+-- Called from Awake() or from the "RandomLevelGenerated" event callback set in Generator.level.OnStart()
 function Behavior:UpdateLevelCamera()
    local nodes = GameObject.GetWithTag("node")
     local maxValue = 0
@@ -196,7 +238,6 @@ function Behavior:UpdateLevelCamera()
     end
     
     local scale = math.ceil(maxValue + 1) * 2
-
     GameObject.Get("World Camera").camera.orthographicScale = math.max( 6, scale ) -- min=6
 end
 
@@ -227,7 +268,10 @@ function Behavior:Update()
         if coroutine.status(Generator.coroutine) ~= "dead" then
             if coroutineCooldown <= 0 then
                 coroutineCooldown = maxCooldown
-                coroutine.resume(Generator.coroutine)
+                local isOk, msg = coroutine.resume(Generator.coroutine)
+                if not isOk then
+                    error( msg )
+                end
                 
                 self.progressbarGO.progressBar.value = #GameObject.GetWithTag("node")
             end

@@ -1,16 +1,18 @@
 
 function Behavior:Awake()
-    local nodeGOs = self.gameObject.children
+    local nodeGOs = self.gameObject:GetChildren(true)
     local Xs = {}
     local Zs = {}
     
     for i=1, #nodeGOs do
         local node = nodeGOs[i]
-        local position = node.transform.position
-        node.posX = math.round( position.x, 1 )
-        node.posZ = math.round( position.z, 1 )
-        table.insertonce(Xs, node.posX)
-        table.insertonce(Zs, node.posZ)
+        if node.modelRenderer ~= nil then
+            local position = node.transform.position
+            node.posX = math.round( position.x, 1 )
+            node.posZ = math.round( position.z, 1 )
+            table.insertonce(Xs, node.posX)
+            table.insertonce(Zs, node.posZ)
+        end
     end
     
     table.sort(Xs, function(a,b) return a>b end) -- sort in reverse order (big first)
@@ -18,8 +20,10 @@ function Behavior:Awake()
     
     for i=1, #nodeGOs do
         local node = nodeGOs[i]
-        node.gridPosition = Vector2( table.getkey( Xs, node.posX ), table.getkey( Zs, node.posZ ) )
-        node.name = node.gridPosition.x.."."..node.gridPosition.y
+        if node.modelRenderer ~= nil then
+            node.gridPosition = Vector2( table.getkey( Xs, node.posX ), table.getkey( Zs, node.posZ ) )
+            node.name = node.gridPosition.x.."."..node.gridPosition.y
+        end
     end
     
     Game.levelToLoad.gridSize = Vector2( #Xs, #Zs )

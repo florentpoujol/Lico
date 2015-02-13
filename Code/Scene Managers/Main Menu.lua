@@ -4,7 +4,7 @@ function Behavior:Awake(s)
         self:Awake(true)
         return
     end
-    
+       
     local bg = Scene.Append("Main/Background")  
     bg.s:Init()
     
